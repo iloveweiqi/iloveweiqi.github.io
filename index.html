@@ -3,133 +3,373 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>爱围棋 | iWeiQi</title>
+    <title>爱围棋 | iWeiQi - 在线棋谱库</title>
+    <!-- 引入 Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --primary: #2c3e50; --accent: #d4a017; --wood: #eebb76; --bg: #f4f6f8; --radius: 8px; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: #333; }
-        .container { max-width: 800px; margin: 0 auto; padding: 15px; }
-        header { background: #fff; padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 99; }
-        .logo { font-size: 1.2rem; font-weight: bold; text-decoration: none; color: #333; }
-        .nav-btn { padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; }
-        
-        .hero-card { background: #fff; border-radius: var(--radius); padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        
-        /* --- 首页对局信息头 (修复点 1) --- */
-        .game-header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: flex-end; 
-            margin-bottom: 15px; 
-            border-bottom: 2px solid var(--primary); 
-            padding-bottom: 10px; 
+        :root {
+            --primary: #2c3e50;
+            --accent: #d4a017;
+            --wood: #eebb76;
+            --bg: #f4f6f8;
+            --radius: 8px;
         }
-        .vs-text { font-size: 1.1rem; font-weight: bold; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            color: #333;
+        }
+
+        /* --- 导航栏 --- */
+        header {
+            background: #fff;
+            padding: 0 20px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 99;
+        }
+        .logo {
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-decoration: none;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nav-btn {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-left: 5px;
+        }
+        .nav-btn:hover { background: #f9f9f9; }
+
+        /* --- 主容器 --- */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+
+        /* --- 1. 最新对局 (Hero Card) --- */
+        .hero-section { margin-bottom: 25px; }
+        .section-title {
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hero-card {
+            background: #fff;
+            border-radius: var(--radius);
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        /* 对局信息头 (响应式优化) */
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+        }
+        .vs-text { font-size: 1.1rem; font-weight: bold; color: #2c3e50; }
         .event-text { font-size: 0.9rem; color: #666; }
 
         /* 手机端强制上下排列 */
         @media (max-width: 600px) {
-            .game-header { flex-direction: column; align-items: flex-start; gap: 5px; }
+            .game-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
             .event-text { margin-top: 2px; }
         }
 
-        .board-wrapper { width: 100%; max-width: 600px; aspect-ratio: 1/1; margin: 0 auto; background: var(--wood); border-radius: 2px; }
-        canvas { width: 100%; height: 100%; display: block; }
-        
-        .search-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: var(--radius); }
-        .inp { padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex: 1; }
-        .btn-search { background: var(--accent); color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        /* 棋盘容器 */
+        .board-wrapper {
+            width: 100%;
+            max-width: 600px;
+            aspect-ratio: 1 / 1;
+            margin: 0 auto;
+            background: var(--wood);
+            border-radius: 2px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: pointer;
+        }
 
-        .list-section { background: #fff; border-radius: var(--radius); overflow: hidden; }
-        .game-item { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        /* 进入按钮 */
+        .hero-action {
+            text-align: center;
+            margin-top: 15px;
+        }
+        .btn-enter {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 10px 30px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.2s;
+        }
+        .btn-enter:hover { background: #1a252f; }
+
+        /* --- 2. 搜索栏 --- */
+        .search-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 25px;
+            background: #fff;
+            padding: 15px;
+            border-radius: var(--radius);
+            border: 1px solid #eee;
+        }
+        .inp {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex: 1;
+            min-width: 200px;
+        }
+        .btn-search {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* --- 3. 列表区域 --- */
+        .list-section {
+            background: #fff;
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid #eee;
+        }
+        .list-header {
+            padding: 15px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #eee;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .link-all {
+            font-size: 0.85rem;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .link-all:hover { text-decoration: underline; }
+
+        .game-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.1s;
+        }
+        .game-item:last-child { border-bottom: none; }
         .game-item:hover { background: #f0f7ff; }
-        .win { color: #e74c3c; font-weight: bold; }
+        
+        .item-title {
+            font-weight: bold;
+            color: #333;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .item-meta { font-size: 0.85rem; color: #888; }
+        .item-result { font-weight: bold; font-size: 0.9rem; }
+        .win { color: #e74c3c; }
+
     </style>
 </head>
 <body>
 
+<!-- 头部 -->
 <header>
-    <a href="index.html" class="logo">⚫⚪ 爱围棋</a>
+    <a href="index.html" class="logo">
+        <span>⚫⚪</span> 爱围棋
+    </a>
+    <!-- 动态显示：登录/注册 或 用户名 -->
     <div id="auth-box"></div>
 </header>
 
 <div class="container">
-    <div style="margin-bottom:5px; font-weight:bold; color:#555;">🔥 本日推荐</div>
-    <div class="hero-card">
-        <div class="game-header">
-            <!-- 上下结构优化 -->
-            <div class="vs-text"><span id="h-black">--</span> (B) vs <span id="h-white">--</span> (W)</div>
-            <div class="event-text"><span id="h-event">Loading...</span> · <span id="h-result"></span></div>
+
+    <!-- 1. 最新对局展示 -->
+    <div class="hero-section">
+        <div class="section-title">
+            <span>🔥 本日推荐 (Latest Match)</span>
         </div>
-        <div class="board-wrapper"><canvas id="main-board"></canvas></div>
-        <div style="text-align: center; margin-top: 15px;">
-            <a id="enter-btn" href="#"><button class="btn-search" style="background:var(--primary)">进入详情 / 猜局</button></a>
+        
+        <div class="hero-card">
+            <!-- 信息头：手机端会自动换行 -->
+            <div class="game-header">
+                <div class="vs-text">
+                    <span id="h-black">--</span> (B) vs <span id="h-white">--</span> (W)
+                </div>
+                <div class="event-text">
+                    <span id="h-event">Loading...</span> · <span id="h-result"></span>
+                </div>
+            </div>
+
+            <!-- 棋盘 -->
+            <div class="board-wrapper">
+                <canvas id="main-board"></canvas>
+            </div>
+
+            <!-- 按钮 -->
+            <div class="hero-action">
+                <a id="enter-btn" href="#" class="btn-enter">进入详情 / 猜局 / 试下</a>
+            </div>
         </div>
     </div>
 
+    <!-- 2. 简单搜索 -->
     <div class="search-bar">
-        <input type="text" class="inp" id="k-word" placeholder="棋手 / 赛事...">
+        <input type="text" class="inp" id="k-word" placeholder="搜索棋手、赛事...">
         <button class="btn-search" onclick="doSearch()">搜索</button>
     </div>
 
+    <!-- 3. 最新录入列表 -->
     <div class="list-section">
-        <div style="padding:15px; background:#f9f9f9; border-bottom:1px solid #eee; font-weight:bold;">📚 最新录入 (Top 10)</div>
-        <a href="library.html" style="font-size:0.9rem; color:var(--primary); text-decoration:none;">查看全部棋谱 &gt;</a>
-        <div id="game-list">Loading...</div>
+        <div class="list-header">
+            <span>📚 最新录入 (Top 10)</span>
+            <a href="library.html" class="link-all">查看全部棋谱 &gt;</a>
+        </div>
+        <div id="game-list">
+            <div style="padding:20px; text-align:center; color:#999;">Loading...</div>
+        </div>
     </div>
+
 </div>
 
+<!-- 引入脚本 -->
 <script src="assets/js/config.js"></script>
 <script src="assets/js/core.js"></script>
+
 <script>
+    // 立即初始化棋盘对象，防止花屏 (core.js 会在内部处理安全检查)
     const board = new GoBoard('main-board');
+    // 配置首页棋盘：显示坐标，不显示手数
+    board.config.showCoords = true;
+    board.config.showNumbers = false;
+
     const engine = new GoEngine();
 
     window.onload = async () => {
+        // 1. 渲染头部登录状态 (config.js 中的公共函数)
         renderHeaderAuth('auth-box');
+
+        // 2. 加载数据
         await loadData();
     };
 
     async function loadData(filters = {}) {
         const list = document.getElementById('game-list');
-        list.innerHTML = '<div style="padding:20px;text-align:center">Loading...</div>';
+        list.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">Loading...</div>';
 
-        let q = sbClient.from('games').select('*').order('game_date', {ascending: false}).limit(20);
-        if (filters.word) q = q.or(`black_player.ilike.%${filters.word}%,white_player.ilike.%${filters.word}%,event_name.ilike.%${filters.word}%`);
+        // 查询最近的 20 条数据
+        let q = sbClient
+            .from('games')
+            .select('*')
+            .order('game_date', { ascending: false }) // 按比赛日期排序
+            .limit(20);
+
+        // 如果有搜索关键词
+        if (filters.word) {
+            const w = filters.word;
+            q = q.or(`black_player.ilike.%${w}%,white_player.ilike.%${w}%,event_name.ilike.%${w}%`);
+        }
 
         const { data, error } = await q;
 
-        if (error || !data || data.length === 0) {
-            list.innerHTML = '<div style="padding:20px;text-align:center">暂无数据</div>';
+        // 错误处理
+        if (error) {
+            list.innerHTML = `<div style="padding:20px; text-align:center; color:red;">加载失败: ${error.message}</div>`;
             return;
         }
 
+        // 空数据处理
+        if (!data || data.length === 0) {
+            list.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">暂无数据</div>';
+            document.getElementById('h-event').innerText = "No Games";
+            return;
+        }
+
+        // --- A. 渲染大棋盘 (取第一条) ---
         const top = data[0];
         document.getElementById('h-black').innerText = top.black_player;
         document.getElementById('h-white').innerText = top.white_player;
-        document.getElementById('h-event').innerText = top.event_name;
-        document.getElementById('h-result').innerText = top.result;
+        document.getElementById('h-event').innerText = top.event_name || '未知赛事';
+        document.getElementById('h-result').innerText = top.result || '-';
+        
+        // 更新跳转链接 (使用 Hash 路由)
         document.getElementById('enter-btn').href = `game/#${top.id}`;
         
-        const parsed = parseSGF(top.sgf_content);
-        engine.reset();
-        parsed.moves.forEach(m => engine.play(m.x, m.y, m.c));
-        board.draw(engine.board, parsed.moves[parsed.moves.length-1]);
+        // 解析棋谱并演示到终局
+        if (top.sgf_content) {
+            const parsed = parseSGF(top.sgf_content);
+            engine.reset();
+            // 自动走到最后一步
+            parsed.moves.forEach(m => engine.play(m.x, m.y, m.c));
+            // 绘制
+            board.draw(engine.board, parsed.moves[parsed.moves.length-1]);
+        }
 
-        list.innerHTML = data.slice(0, 10).map(g => `
+        // --- B. 渲染列表 (取前10条) ---
+        const top10 = data.slice(0, 10);
+        list.innerHTML = top10.map(g => `
             <div class="game-item">
                 <div>
-                    <a href="game/#${g.id}" style="font-weight:bold; color:#333; text-decoration:none">${g.black_player} vs ${g.white_player}</a>
-                    <div style="font-size:0.85rem; color:#888">📅 ${g.game_date} · ${g.event_name}</div>
+                    <a href="game/#${g.id}" class="item-title">
+                        ${g.black_player} vs ${g.white_player}
+                    </a>
+                    <div class="item-meta">📅 ${g.game_date} · ${g.event_name || '-'}</div>
                 </div>
-                <div class="${g.result && g.result.includes('+') ? 'win' : ''}">${g.result}</div>
+                <div class="item-result ${g.result && g.result.includes('+') ? 'win' : ''}">
+                    ${g.result || '-'}
+                </div>
             </div>
         `).join('');
     }
 
+    // 搜索函数
     function doSearch() {
-        loadData({ word: document.getElementById('k-word').value });
+        const keyword = document.getElementById('k-word').value;
+        loadData({ word: keyword });
     }
 </script>
+
 </body>
 </html>
