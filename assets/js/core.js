@@ -1,5 +1,3 @@
-// assets/js/core.js
-
 /** 1. 规则引擎 */
 class GoEngine {
     constructor() { this.reset(); }
@@ -51,41 +49,61 @@ class GoEngine {
     }
 }
 
-/** 2. Canvas 渲染 */
+/** 2. Canvas 渲染 (优化版) */
 class GoBoard {
     constructor(id) {
         this.canvas = document.getElementById(id);
         if(!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
         this.size = 19;
+        
+        // 初始绘制空网格，不等待resizeObserver
+        this.resize();
+
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(this.canvas.parentElement);
         this.canvas.addEventListener('click', e => this.onClick(e));
-        setTimeout(()=>this.resize(), 100);
     }
+
     resize() {
+        if(!this.canvas.parentElement) return;
         const p = this.canvas.parentElement.getBoundingClientRect();
+        if(p.width === 0) return; // 避免不可见时报错
+
         const d = window.devicePixelRatio || 1;
-        this.canvas.width = p.width * d; this.canvas.height = p.height * d;
+        this.canvas.width = p.width * d; 
+        this.canvas.height = p.height * d;
         this.ctx.scale(d, d);
         this.width = p.width; 
         this.padding = this.width / 22;
         this.cell = (this.width - 2*this.padding)/(this.size-1);
+        
+        // 如果有数据则画全图，没数据先画网格
         if(this.lastState) this.draw(this.lastState.board, this.lastState.lastMove);
+        else this.drawGrid(); 
     }
-    draw(board, lastMove) {
-        this.lastState = {board, lastMove};
+
+    drawGrid() {
         const {ctx, width: w, padding: p, cell: c, size} = this;
         ctx.clearRect(0,0,w,w);
+        // 背景色在CSS里设置，Canvas只画线
         ctx.lineWidth=1; ctx.strokeStyle="#000"; ctx.beginPath();
         for(let i=0;i<size;i++){
             ctx.moveTo(p+i*c, p); ctx.lineTo(p+i*c, w-p);
             ctx.moveTo(p, p+i*c); ctx.lineTo(w-p, p+i*c);
         }
         ctx.stroke();
+        // 星位
         [3,9,15].forEach(x=>[3,9,15].forEach(y=>{
             ctx.beginPath(); ctx.arc(p+x*c, p+y*c, 2.5, 0, Math.PI*2); ctx.fillStyle="#000"; ctx.fill();
         }));
+    }
+
+    draw(board, lastMove) {
+        this.lastState = {board, lastMove};
+        this.drawGrid(); // 先画网格
+
+        const {ctx, padding: p, cell: c, size} = this;
         for(let y=0;y<size;y++) for(let x=0;x<size;x++) {
             if(board[y][x]) this.drawStone(x,y,board[y][x]);
         }
@@ -93,6 +111,7 @@ class GoBoard {
             ctx.fillStyle="red"; ctx.fillRect(p+lastMove.x*c-3, p+lastMove.y*c-3, 6, 6);
         }
     }
+
     drawStone(x,y,color) {
         const {ctx, padding: p, cell: c} = this;
         const cx=p+x*c, cy=p+y*c, r=c*0.48;
@@ -103,6 +122,7 @@ class GoBoard {
         ctx.fillStyle=g; ctx.fill();
         if(color===2){ ctx.strokeStyle="#ccc"; ctx.stroke(); }
     }
+
     onClick(e) {
         if(!this.clickHandler) return;
         const r = this.canvas.getBoundingClientRect();
