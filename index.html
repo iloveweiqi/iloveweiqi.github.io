@@ -12,13 +12,34 @@
         header { background: #fff; padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 99; }
         .logo { font-size: 1.2rem; font-weight: bold; text-decoration: none; color: #333; }
         .nav-btn { padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; }
+        
         .hero-card { background: #fff; border-radius: var(--radius); padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .game-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        
+        /* --- 首页对局信息头 (修复点 1) --- */
+        .game-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-end; 
+            margin-bottom: 15px; 
+            border-bottom: 2px solid var(--primary); 
+            padding-bottom: 10px; 
+        }
+        .vs-text { font-size: 1.1rem; font-weight: bold; }
+        .event-text { font-size: 0.9rem; color: #666; }
+
+        /* 手机端强制上下排列 */
+        @media (max-width: 600px) {
+            .game-header { flex-direction: column; align-items: flex-start; gap: 5px; }
+            .event-text { margin-top: 2px; }
+        }
+
         .board-wrapper { width: 100%; max-width: 600px; aspect-ratio: 1/1; margin: 0 auto; background: var(--wood); border-radius: 2px; }
         canvas { width: 100%; height: 100%; display: block; }
+        
         .search-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: var(--radius); }
         .inp { padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex: 1; }
         .btn-search { background: var(--accent); color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+
         .list-section { background: #fff; border-radius: var(--radius); overflow: hidden; }
         .game-item { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         .game-item:hover { background: #f0f7ff; }
@@ -36,8 +57,9 @@
     <div style="margin-bottom:5px; font-weight:bold; color:#555;">🔥 本日推荐</div>
     <div class="hero-card">
         <div class="game-header">
-            <div><span id="h-black">--</span> (B) vs <span id="h-white">--</span> (W)</div>
-            <div style="font-size:0.9rem; color:#666"><span id="h-event">Loading...</span> · <span id="h-result"></span></div>
+            <!-- 上下结构优化 -->
+            <div class="vs-text"><span id="h-black">--</span> (B) vs <span id="h-white">--</span> (W)</div>
+            <div class="event-text"><span id="h-event">Loading...</span> · <span id="h-result"></span></div>
         </div>
         <div class="board-wrapper"><canvas id="main-board"></canvas></div>
         <div style="text-align: center; margin-top: 15px;">
@@ -47,8 +69,6 @@
 
     <div class="search-bar">
         <input type="text" class="inp" id="k-word" placeholder="棋手 / 赛事...">
-        <input type="date" class="inp" id="k-start">
-        <input type="date" class="inp" id="k-end">
         <button class="btn-search" onclick="doSearch()">搜索</button>
     </div>
 
@@ -61,7 +81,6 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/core.js"></script>
 <script>
-    // 立即初始化棋盘
     const board = new GoBoard('main-board');
     const engine = new GoEngine();
 
@@ -76,14 +95,11 @@
 
         let q = sbClient.from('games').select('*').order('game_date', {ascending: false}).limit(20);
         if (filters.word) q = q.or(`black_player.ilike.%${filters.word}%,white_player.ilike.%${filters.word}%,event_name.ilike.%${filters.word}%`);
-        if (filters.start) q = q.gte('game_date', filters.start);
-        if (filters.end) q = q.lte('game_date', filters.end);
 
         const { data, error } = await q;
 
         if (error || !data || data.length === 0) {
             list.innerHTML = '<div style="padding:20px;text-align:center">暂无数据</div>';
-            document.getElementById('h-event').innerText = "No Games";
             return;
         }
 
@@ -92,8 +108,6 @@
         document.getElementById('h-white').innerText = top.white_player;
         document.getElementById('h-event').innerText = top.event_name;
         document.getElementById('h-result').innerText = top.result;
-        
-        // 链接更新为 Hash 格式
         document.getElementById('enter-btn').href = `game/#${top.id}`;
         
         const parsed = parseSGF(top.sgf_content);
@@ -113,11 +127,7 @@
     }
 
     function doSearch() {
-        loadData({
-            word: document.getElementById('k-word').value,
-            start: document.getElementById('k-start').value,
-            end: document.getElementById('k-end').value
-        });
+        loadData({ word: document.getElementById('k-word').value });
     }
 </script>
 </body>
