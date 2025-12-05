@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>爱围棋 | iweiqi - 首页</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #d4a017;
+            --wood: #eebb76;
+            --bg: #f4f6f8;
+            --radius: 8px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: #333;
+        }
+
+        /* 布局容器 */
+        .container { max-width: 800px; margin: 0 auto; padding: 15px; }
+        
+        /* --- 导航栏 --- */
+        header {
+            background: #fff; padding: 0 20px; height: 60px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;
+        }
+        .logo { font-weight: bold; font-size: 1.2rem; display: flex; align-items: center; gap:5px; text-decoration: none; color: #333;}
+        
+        .nav-right { display: flex; gap: 10px; }
+        .nav-btn {
+            padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px;
+            cursor: pointer; font-size: 0.9rem; transition: background 0.2s;
+        }
+        .nav-btn:hover { background: #f5f5f5; }
+        .btn-login { background: var(--primary); color: #fff; border: none; }
+        .btn-login:hover { background: #1a252f; }
+
+        /* --- 大棋盘展示区 (Hero) --- */
+        .featured-game {
+            background: #fff; border-radius: var(--radius); padding: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 30px;
+        }
+        .game-header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 15px; border-bottom: 2px solid var(--primary); padding-bottom: 10px;
+        }
+        .game-title { font-size: 1.1rem; font-weight: bold; }
+        .game-date { font-size: 0.9rem; color: #666; }
+
+        .board-wrapper {
+            width: 100%; max-width: 600px; aspect-ratio: 1 / 1; margin: 0 auto;
+            background-color: var(--wood); position: relative;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        .controls { display: flex; justify-content: center; gap: 15px; margin-top: 15px; }
+        .c-btn {
+            background: #f0f0f0; border: none; width: 40px; height: 40px; border-radius: 50%;
+            font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .action-btn {
+            background: var(--primary); color: #fff; border: none; padding: 0 20px;
+            border-radius: 20px; cursor: pointer; font-size: 0.9rem;
+        }
+
+        /* --- 搜索栏 (Search) --- */
+        .search-bar {
+            background: #fff; padding: 15px; border-radius: var(--radius);
+            margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); align-items: center;
+        }
+        .search-label { width: 100%; font-weight: bold; color: #555; margin-bottom: 5px; font-size: 0.9rem;}
+        .inp { padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex: 1; min-width: 140px;}
+        .btn-search { 
+            background: var(--accent); color: #fff; border: none; padding: 10px 20px; 
+            border-radius: 4px; cursor: pointer; flex-shrink: 0; font-weight: bold;
+        }
+
+        /* --- 列表区域 --- */
+        .list-section { background: #fff; border-radius: var(--radius); overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .list-header { 
+            padding: 15px; background: #f9f9f9; border-bottom: 1px solid #eee;
+            font-weight: bold; color: #555; display: flex; justify-content: space-between; align-items: center;
+        }
+        .game-item {
+            padding: 12px 15px; border-bottom: 1px solid #eee;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: background 0.1s;
+        }
+        .game-item:last-child { border-bottom: none; }
+        .game-item:hover { background-color: #f0f7ff; }
+        
+        .item-main { display: flex; flex-direction: column; gap: 3px; }
+        .item-players { font-weight: 500; color: #222; text-decoration: none; font-size: 1rem; }
+        .item-meta { font-size: 0.85rem; color: #888; }
+        .item-result { font-weight: bold; font-size: 0.9rem; min-width: 50px; text-align: right; }
+        .win { color: #e74c3c; }
+
+        @media (max-width: 600px) {
+            .search-bar { flex-direction: column; align-items: stretch; }
+            .game-header { flex-direction: column; align-items: flex-start; gap: 5px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <a href="#" class="logo"><span>⚫⚪</span> <span id="site-title">爱围棋</span></a>
+    <div class="nav-right">
+        <!-- 修复：双语按钮回来了 -->
+        <button class="nav-btn" id="lang-btn" onclick="toggleLang()">EN</button>
+        <button class="nav-btn btn-login" data-i18n="login">登录</button>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- 1. Featured Game -->
+    <div style="margin-bottom:10px; font-weight:bold; color:#555; display:flex; justify-content:space-between;">
+        <span data-i18n="featured">🔥 本日推荐</span>
+        <span style="font-weight:normal; font-size:0.85rem; color:#888" data-i18n="sort_hint">按比赛日期 (Game Date)</span>
+    </div>
+    
+    <div class="featured-game">
+        <div class="game-header">
+            <div class="game-title">
+                <span id="h-black">--</span> (B) vs <span id="h-white">--</span> (W)
+            </div>
+            <div class="game-date">
+                <span id="h-event">Loading...</span> · <span id="h-result"></span>
+            </div>
+        </div>
+        <div class="board-wrapper">
+            <canvas id="main-board"></canvas>
+        </div>
+        <div class="controls">
+            <button class="c-btn" onclick="board.prev()">‹</button>
+            <button class="c-btn" onclick="board.next()">›</button>
+            <a id="enter-game-btn" href="#">
+                <button class="action-btn" style="height: 40px;" data-i18n="enter_btn">进入详情 / 猜局</button>
+            </a>
+            <button class="c-btn" onclick="alert('Download SGF')">📥</button>
+        </div>
+    </div>
+
+    <!-- 2. Search Bar -->
+    <div class="search-bar">
+        <div class="search-label" data-i18n="search_label">🔍 查找棋谱</div>
+        <input type="text" class="inp" id="s-keyword" placeholder="棋手 / 赛事名称...">
+        <input type="date" class="inp" title="Start Date">
+        <input type="date" class="inp" title="End Date">
+        <button class="btn-search" data-i18n="search_btn">搜索</button>
+    </div>
+
+    <!-- 3. List Section -->
+    <div class="list-section">
+        <div class="list-header">
+            <span data-i18n="list_title">📚 最新录入 / 历史棋谱 (Top 10)</span>
+        </div>
+        <!-- 确保 ID 正确 -->
+        <div id="game-list">
+            <div style="padding:20px; text-align:center; color:#999;">Loading List...</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --- A. 数据模拟 ---
+    const generateMockGames = () => {
+        const games = [
+            { id: "real-1", event: "第28届LG杯决赛", black: "柯洁", white: "申真谞", result: "W+R", game_date: "2024-05-20", sgf: "(;GM[1]SZ[19];B[qd];W[dd];B[pq];W[dq];B[oc];W[co];B[qk])" },
+            { id: "real-2", event: "名人战", black: "芈昱廷", white: "连笑", result: "B+0.5", game_date: "2024-04-15", sgf: "(;GM[1])" },
+            { id: "old-1", event: "当湖十局", black: "范西屏", white: "施襄夏", result: "Unknown", game_date: "1739-01-01", sgf: "(;GM[1])" }
+        ];
+        // 补充数据
+        for(let i=1; i<=12; i++) {
+            games.push({
+                id: `dummy-${i}`, event: `网络训练赛第${i}轮`, black: `黑方${i}`, white: `白方${i}`,
+                result: i%2===0?"B+R":"W+2.5", game_date: `2024-01-${(10+i).toString().padStart(2,'0')}`, sgf: "(;GM[1])"
+            });
+        }
+        return games;
+    };
+
+    const allGames = generateMockGames();
+    let currentGame = null;
+
+    // --- B. 国际化 ---
+    const i18n = {
+        zh: {
+            title: "爱围棋", featured: "🔥 本日推荐", sort_hint: "按比赛日期排序",
+            enter_btn: "进入详情 / 猜局", search_label: "🔍 查找棋谱", search_btn: "搜索",
+            list_title: "📚 最新录入 / 历史棋谱 (Top 10)", login: "登录"
+        },
+        en: {
+            title: "iWeiQi", featured: "🔥 Featured Game", sort_hint: "Sorted by Game Date",
+            enter_btn: "Enter Game", search_label: "🔍 Search Games", search_btn: "Search",
+            list_title: "📚 Recent / History Games (Top 10)", login: "Login"
+        }
+    };
+    let curLang = 'zh';
+    function toggleLang() {
+        curLang = curLang === 'zh' ? 'en' : 'zh';
+        document.getElementById('lang-btn').innerText = curLang === 'zh' ? 'EN' : '中文';
+        
+        // 替换文本
+        document.getElementById('site-title').innerText = i18n[curLang].title;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if(i18n[curLang][k]) el.innerText = i18n[curLang][k];
+        });
+        
+        // 替换 placeholder
+        const input = document.getElementById('s-keyword');
+        input.placeholder = curLang === 'zh' ? "棋手 / 赛事名称..." : "Player / Event Name...";
+    }
+
+    // --- C. 棋盘引擎 (简化版) ---
+    const board = {
+        ctx: null, size: 19, grid: [], moves: [], currentStep: 0, width: 0, cell: 0, padding: 0,
+        init: function(id) {
+            const canvas = document.getElementById(id);
+            if(!canvas) return; // 安全检查
+            this.ctx = canvas.getContext('2d');
+            const resize = () => {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+                this.ctx.scale(dpr, dpr);
+                this.width = rect.width; this.padding = this.width/20;
+                this.cell = (this.width - 2*this.padding)/(this.size-1);
+                this.draw();
+            };
+            window.addEventListener('resize', resize); resize();
+        },
+        loadSGF: function(sgf) {
+            this.grid = Array(19).fill(0).map(()=>Array(19).fill(0));
+            this.moves = [];
+            try {
+                const regex = /;([BW])\[([a-s]{2})\]/g; let match; const map = "abcdefghijklmnopqrs";
+                while ((match = regex.exec(sgf)) !== null) {
+                    const c = match[1]==='B'?1:2;
+                    const x = map.indexOf(match[2][0]), y = map.indexOf(match[2][1]);
+                    if(x>=0 && y>=0) this.moves.push({x,y,c});
+                }
+                this.moves.forEach(m => this.grid[m.y][m.x] = m.c);
+                this.currentStep = this.moves.length;
+                this.draw();
+            } catch(e) { console.error("SGF Parse error", e); }
+        },
+        prev: function() {
+            if(this.currentStep>0) {
+                this.currentStep--; const m = this.moves[this.currentStep];
+                this.grid[m.y][m.x] = 0; this.draw();
+            }
+        },
+        next: function() {
+            if(this.currentStep < this.moves.length) {
+                const m = this.moves[this.currentStep];
+                this.grid[m.y][m.x] = m.c; this.currentStep++; this.draw();
+            }
+        },
+        draw: function() {
+            if(!this.ctx) return;
+            const {ctx,width,padding,cell,size} = this;
+            ctx.clearRect(0,0,width,width);
+            ctx.strokeStyle="#000"; ctx.lineWidth=1; ctx.beginPath();
+            for(let i=0;i<size;i++){
+                ctx.moveTo(padding+i*cell, padding); ctx.lineTo(padding+i*cell, width-padding);
+                ctx.moveTo(padding, padding+i*cell); ctx.lineTo(width-padding, padding+i*cell);
+            }
+            ctx.stroke();
+            [3,9,15].forEach(x=>[3,9,15].forEach(y=>{
+                ctx.beginPath(); ctx.arc(padding+x*cell, padding+y*cell, 3, 0, Math.PI*2); ctx.fill();
+            }));
+            for(let y=0;y<size;y++) for(let x=0;x<size;x++) {
+                if(this.grid[y][x]) {
+                    ctx.beginPath();
+                    ctx.arc(padding+x*cell, padding+y*cell, cell*0.48, 0, Math.PI*2);
+                    ctx.fillStyle = this.grid[y][x]===1 ? "#111" : "#fff";
+                    if(this.grid[y][x]===2) { ctx.strokeStyle="#ccc"; ctx.stroke(); }
+                    ctx.fill();
+                }
+            }
+            if(this.currentStep>0) {
+                const last = this.moves[this.currentStep-1];
+                ctx.beginPath(); ctx.arc(padding+last.x*cell, padding+last.y*cell, cell*0.2, 0, Math.PI*2);
+                ctx.fillStyle="red"; ctx.fill();
+            }
+        }
+    };
+
+    // --- D. 页面入口 ---
+    window.onload = function() {
+        console.log("Start initializing...");
+
+        // 1. 排序数据
+        const sortedGames = [...allGames].sort((a, b) => new Date(b.game_date) - new Date(a.game_date));
+        
+        // 2. 渲染列表 (优先执行)
+        const top10 = sortedGames.slice(0, 10);
+        const listEl = document.getElementById('game-list');
+        if(listEl) {
+            listEl.innerHTML = top10.map(g => `
+                <div class="game-item">
+                    <div class="item-main">
+                        <a href="view.html?id=${g.id}" class="item-players">${g.black} vs ${g.white}</a>
+                        <div class="item-meta">📅 ${g.game_date} · ${g.event}</div>
+                    </div>
+                    <div class="item-result ${g.result.includes('+')?'win':''}">${g.result}</div>
+                </div>
+            `).join('');
+            console.log("List rendered with " + top10.length + " items.");
+        } else {
+            console.error("Cannot find #game-list element");
+        }
+
+        // 3. 渲染大棋盘
+        board.init('main-board');
+        const latest = sortedGames[0];
+        currentGame = latest;
+        if(latest) {
+            document.getElementById('h-black').innerText = latest.black;
+            document.getElementById('h-white').innerText = latest.white;
+            document.getElementById('h-event').innerText = latest.event;
+            document.getElementById('h-result').innerText = latest.result;
+            document.getElementById('enter-game-btn').href = `view.html?id=${latest.id}`;
+            if(latest.sgf) board.loadSGF(latest.sgf);
+        }
+    };
+</script>
+</body>
+</html>
