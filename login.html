@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 爱围棋</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f4f6f8; margin: 0; }
+        .card { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 350px; }
+        input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #2c3e50; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem;}
+        button:hover { background: #1a252f; }
+        .link { text-align: center; margin-top: 15px; font-size: 0.9rem; color: #666; cursor: pointer; text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2 style="text-align:center; color:#2c3e50">爱围棋 登录</h2>
+        <input type="email" id="email" placeholder="邮箱">
+        <input type="password" id="pwd" placeholder="密码">
+        <button onclick="handleAuth()">登录 / 注册</button>
+        <div class="link" onclick="location.href='index.html'">返回首页</div>
+        <div id="msg" style="margin-top:15px; color:red; text-align:center; font-size:0.9rem"></div>
+    </div>
+
+<script src="assets/js/config.js"></script>
+<script>
+    async function handleAuth() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('pwd').value;
+        const msg = document.getElementById('msg');
+        msg.innerText = "Processing...";
+        
+        // 尝试登录
+        let { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+        
+        if (error) {
+            // 如果登录失败，尝试注册
+            const { data: regData, error: regError } = await sbClient.auth.signUp({ email, password });
+            if (regError) {
+                msg.innerText = "Error: " + regError.message;
+            } else {
+                msg.style.color = "green";
+                msg.innerText = "注册成功！请去邮箱验证，然后登录。";
+            }
+        } else {
+            // 登录成功
+            // 检查是否管理员
+            const {data: profile} = await sbClient.from('profiles').select('*').eq('id', data.user.id).single();
+            if(profile && profile.is_admin) location.href = "admin.html";
+            else location.href = "index.html";
+        }
+    }
+</script>
+</body>
+</html>
