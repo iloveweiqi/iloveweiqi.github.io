@@ -14,10 +14,10 @@
         header { background: #fff; height: 50px; display: flex; align-items: center; padding: 0 15px; border-bottom:1px solid #eee; position:sticky; top:0; z-index:99; }
         .back { text-decoration: none; color: #555; font-size: 0.9rem; }
         
-        /* === 布局容器 (上下统一宽度) === */
+        /* === 布局容器 === */
         .main-stage, .bottom-section { 
             width: 100%; 
-            max-width: 1200px; /* 统一宽度，确保左对齐 */
+            max-width: 1200px; 
             margin: 0 auto; 
             padding: 10px; 
         }
@@ -27,7 +27,6 @@
             gap: 15px;
             flex-direction: row; 
             align-items: flex-start;
-            /* 电脑端左对齐，如果想居中对齐请改为 center */
             justify-content: flex-start; 
         }
 
@@ -75,9 +74,7 @@
 
         /* === 响应式适配 === */
         @media (min-width: 769px) {
-            .board-col {
-                height: 80vh; max-height: 650px; width: auto; 
-            }
+            .board-col { height: 80vh; max-height: 650px; width: auto; }
             .bottom-section { margin-top: 20px; }
         }
 
@@ -95,9 +92,31 @@
             .comment-box { height: 200px; }
         }
 
-        /* 列表部分 */
-        .list-box { background: #fff; border-radius: 8px; border:1px solid #eee; }
-        .game-item { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+        /* 列表部分样式优化 */
+        .list-box { background: #fff; border-radius: 8px; border:1px solid #eee; overflow: hidden; }
+        
+        .list-header { 
+            padding: 15px; background: #f9f9f9; border-bottom: 1px solid #eee; 
+            display: flex; justify-content: space-between; align-items: center; 
+        }
+        .list-title { font-weight: bold; color: #333; }
+        .list-link { font-size: 0.85rem; color: var(--primary); text-decoration: none; }
+        .list-link:hover { text-decoration: underline; }
+
+        .game-item { 
+            padding: 15px; border-bottom: 1px solid #eee; 
+            display: flex; justify-content: space-between; align-items: center; 
+            transition: background 0.1s;
+        }
+        .game-item:hover { background: #f0f7ff; }
+        
+        .item-main { flex: 1; }
+        .item-players { font-weight: bold; color: #333; font-size: 1rem; text-decoration: none; display: block; margin-bottom: 4px; }
+        .item-meta { font-size: 0.85rem; color: #666; }
+        .item-result { font-weight: bold; font-size: 0.9rem; margin-left: 10px; min-width: 60px; text-align: right; }
+        .win-b { color: #2c3e50; } /* 黑胜颜色 */
+        .win-w { color: #e74c3c; } /* 白胜颜色 */
+
         .search-bar { display: flex; gap: 10px; margin-bottom: 15px; }
         .inp { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
         .btn-search { padding: 8px 15px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer; }
@@ -146,7 +165,6 @@
                 <div style="color:#666; font-size:0.85rem;">
                     <span id="p-event">--</span> · <span id="p-result">--</span> · <span id="p-date"></span>
                 </div>
-                <!-- 修复重点：使用 javascript:void(0) 防止跳转导致 Hash 丢失 -->
                 <div style="margin-top:10px; display:flex; gap:15px; font-size:0.85rem;">
                     <a href="javascript:void(0)" onclick="downloadSGF()" style="color:#666;text-decoration:underline;" data-i18n="download_sgf">📥 下载 SGF</a>
                     <a href="javascript:void(0)" onclick="openFavModal()" style="color:var(--accent);text-decoration:none; font-weight:bold;" data-i18n="add_fav">⭐ 加入收藏</a>
@@ -158,12 +176,24 @@
 </div>
 
 <div class="bottom-section">
-    <h3 style="border-bottom:2px solid var(--primary); padding-bottom:10px; color:#333;" data-i18n="latest_title">📚 更多棋谱</h3>
-    <div class="search-bar">
-        <input type="text" class="inp" id="k-word" data-i18n="search_placeholder" placeholder="搜索: 柯洁, LG杯...">
-        <button class="btn-search" onclick="doSearch()" data-i18n="search_btn">搜索</button>
+    <!-- 棋谱库导航栏 -->
+    <div class="list-box">
+        <div class="list-header">
+            <span class="list-title" data-i18n="latest_title">📚 更多棋谱</span>
+            <a href="../library.html" class="list-link" data-i18n="view_all">查看全部棋谱 &gt;</a>
+        </div>
+        
+        <div style="padding:15px;">
+            <div class="search-bar" style="margin-bottom:0;">
+                <input type="text" class="inp" id="k-word" data-i18n="search_placeholder" placeholder="搜索: 柯洁, LG杯...">
+                <button class="btn-search" onclick="doSearch()" data-i18n="search_btn">搜索</button>
+            </div>
+        </div>
+
+        <div id="game-list">
+            <div style="padding:20px;text-align:center">Loading...</div>
+        </div>
     </div>
-    <div class="list-box" id="game-list"><div style="padding:20px;text-align:center">Loading...</div></div>
 </div>
 
 <!-- 收藏弹窗 -->
@@ -269,7 +299,7 @@
     function renderComment() {
         const box = document.getElementById('comment-content');
         let txt = "";
-        if (mode === 'try') txt = `【${t('try_mode')}】\nSteps: ${tryHist.length}`;
+        if (mode === 'try') txt = `【${t('try_mode')||'试下'}】\nSteps: ${tryHist.length}`;
         else if (curStep > 0) {
             const m = moves[curStep-1];
             txt = m.comment || ""; 
@@ -291,7 +321,7 @@
     function showMsg(t,s) { const e=document.getElementById('msg'); e.innerText=t; e.style.opacity=1; e.style.background=s?"#27ae60":"rgba(0,0,0,0.8)"; setTimeout(()=>e.style.opacity=0,1000); }
     function playSound() { sndMove.currentTime=0; sndMove.play().catch(()=>{}); }
     
-    // 下载
+    // 下载 SGF
     window.downloadSGF = function() {
         if(!gameData) return;
         const b = new Blob([sgfStr],{type:'application/x-go-sgf'});
@@ -302,32 +332,58 @@
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
     
-    async function loadList() {
-        const l = document.getElementById('game-list');
-        const { data } = await sbClient.from('games').select('id,black_player,white_player,result,game_date,event_name').order('game_date',{ascending:false}).limit(10);
-        if(!data) return;
-        l.innerHTML = data.map(g => `<div class="game-item" onclick="window.location.hash='${g.id}';window.location.reload()"><div style="font-weight:bold">${g.black_player} vs ${g.white_player}</div><div>${g.result}</div></div>`).join('');
+    // 加载列表 (优化显示)
+    async function loadList(keyword = '') {
+        const list = document.getElementById('game-list');
+        list.innerHTML = `<div style="padding:20px;text-align:center">${t('loading')||'Loading...'}</div>`;
+        
+        let q = sbClient.from('games').select('id, black_player, white_player, event_name, game_date, result').order('game_date', {ascending: false}).limit(10);
+        
+        if (keyword) {
+            q = q.or(`black_player.ilike.%${keyword}%,white_player.ilike.%${keyword}%,event_name.ilike.%${keyword}%`);
+        }
+
+        const { data, error } = await q;
+
+        if (error || !data || data.length === 0) {
+            list.innerHTML = `<div style="padding:20px;text-align:center">${t('no_data')||'No Data'}</div>`;
+            return;
+        }
+
+        list.innerHTML = data.map(g => {
+            // 处理结果显示：黑胜/白胜
+            let resText = g.result || '-';
+            let resClass = '';
+            if (resText.startsWith('B')) { resText = '黑胜 (' + resText + ')'; resClass = 'win-b'; }
+            if (resText.startsWith('W')) { resText = '白胜 (' + resText + ')'; resClass = 'win-w'; }
+
+            return `
+            <div class="game-item">
+                <div class="item-main">
+                    <a href="javascript:switchGame('${g.id}')" class="item-players">
+                        ${g.black_player} vs ${g.white_player}
+                    </a>
+                    <div class="item-meta">📅 ${g.game_date} · ${g.event_name || '-'}</div>
+                </div>
+                <div class="item-result ${resClass}">${resText}</div>
+            </div>
+            `;
+        }).join('');
     }
 
     function doSearch() {
-        const k = document.getElementById('k-word').value;
-        const l = document.getElementById('game-list');
-        l.innerHTML = 'Loading...';
-        let q = sbClient.from('games').select('id,black_player,white_player,result,game_date,event_name').order('game_date',{ascending:false}).limit(10);
-        if(k) q = q.or(`black_player.ilike.%${k}%,white_player.ilike.%${k}%,event_name.ilike.%${k}%`);
-        q.then(({data})=>{
-            if(!data||!data.length) l.innerHTML='No Data';
-            else l.innerHTML = data.map(g => `<div class="game-item" onclick="window.location.hash='${g.id}';window.location.reload()"><div style="font-weight:bold">${g.black_player} vs ${g.white_player}</div><div>${g.result}</div></div>`).join('');
-        });
+        loadList(document.getElementById('k-word').value);
     }
 
-    // 收藏 (已修复 href)
+    window.switchGame = function(id) {
+        window.location.hash = id;
+        window.location.reload(); 
+    }
+
+    // 收藏 (同前)
     async function openFavModal() {
         const { data: { user } } = await sbClient.auth.getUser();
-        if (!user) {
-            alert("请先登录");
-            return location.href = "../login.html";
-        }
+        if (!user) { alert("请先登录"); return location.href = "../login.html"; }
         const { data: folders } = await sbClient.from('favorites').select('*').eq('user_id', user.id).eq('is_folder', true).is('parent_id', null).order('created_at');
         const select = document.getElementById('fav-folder-select');
         select.innerHTML = '<option value="">根目录 (Root)</option>';
@@ -339,19 +395,14 @@
     async function saveFavorite() {
         const { data: { user } } = await sbClient.auth.getUser();
         if (!user) return alert("请先登录");
-
         let folderId = document.getElementById('fav-folder-select').value;
         if (!folderId || folderId.trim() === "") folderId = null;
-
         let gameId = window.location.hash.substring(1);
         if (!gameId || gameId.trim() === "") return alert("ID错误");
-
         const title = document.getElementById('fav-title').value;
-
         const { error } = await sbClient.from('favorites').insert({
             user_id: user.id, game_id: gameId, parent_id: folderId, title: title, is_folder: false
         });
-
         if (error) { console.error(error); alert("收藏失败: " + error.message); }
         else { alert("收藏成功！"); document.getElementById('fav-modal').style.display = 'none'; }
     }
