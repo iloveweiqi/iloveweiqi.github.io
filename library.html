@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>棋谱库 - 爱围棋</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #2c3e50; --accent: #d4a017; --bg: #f4f6f8; --radius: 8px; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: #333; padding-bottom: 40px;}
+        .container { max-width: 800px; margin: 0 auto; padding: 15px; }
+        
+        /* 导航栏 */
+        header { background: #fff; padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 99; }
+        .logo { font-size: 1.2rem; font-weight: bold; text-decoration: none; color: #333; }
+        .nav-btn { padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; font-size: 0.9rem;}
+        
+        /* 搜索栏 */
+        .search-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: var(--radius); border: 1px solid #eee;}
+        .inp { padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex: 1; }
+        .btn-search { background: var(--accent); color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+
+        /* 列表容器 */
+        .library-box { background: #fff; border-radius: var(--radius); overflow: hidden; border: 1px solid #eee; min-height: 400px;}
+        .list-header { padding: 15px; background: #f9f9f9; border-bottom: 1px solid #eee; font-weight: bold; display: flex; justify-content: space-between; align-items: center;}
+        
+        /* 单行样式 */
+        .game-row { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; transition: background 0.1s;}
+        .game-row:hover { background: #f0f7ff; cursor: pointer; }
+        .game-info { flex: 1; }
+        .game-title { font-weight: bold; font-size: 1.05rem; color: #2c3e50; margin-bottom: 4px; }
+        .game-meta { font-size: 0.85rem; color: #888; }
+        .game-result { font-weight: bold; margin-left: 10px; min-width: 60px; text-align: right; }
+        .win { color: #e74c3c; }
+
+        /* 分页控件 */
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 20px; margin-top: 10px; }
+        .p-btn { padding: 8px 16px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; }
+        .p-btn:disabled { opacity: 0.5; cursor: not-allowed; background: #eee; }
+        .p-info { font-size: 0.9rem; color: #666; }
+        .p-jump { width: 50px; padding: 6px; text-align: center; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <a href="index.html" class="logo">⚫⚪ 爱围棋</a>
+    <div id="auth-box"></div>
+</header>
+
+<div class="container">
+    <h2 style="margin-top:0; border-bottom:2px solid var(--primary); padding-bottom:10px;">🗂️ 棋谱库 (Library)</h2>
+
+    <!-- 搜索 -->
+    <div class="search-bar">
+        <input type="text" class="inp" id="keyword" placeholder="搜索棋手、赛事...">
+        <button class="btn-search" onclick="search(true)">搜索</button>
+    </div>
+
+    <!-- 列表 -->
+    <div class="library-box">
+        <div class="list-header">
+            <span>全部棋谱</span>
+            <span id="total-count" style="font-weight:normal; font-size:0.85rem; color:#666">...</span>
+        </div>
+        <div id="list-container">
+            <div style="padding:40px; text-align:center; color:#999;">Loading...</div>
+        </div>
+    </div>
+
+    <!-- 分页 -->
+    <div class="pagination">
+        <button class="p-btn" onclick="prevPage()" id="btn-prev">上一页</button>
+        <span class="p-info">
+            第 <span id="cur-page">1</span> / <span id="total-page">1</span> 页
+        </span>
+        <button class="p-btn" onclick="nextPage()" id="btn-next">下一页</button>
+        
+        <!-- 跳转 -->
+        <div style="margin-left: 15px; display: flex; align-items: center; gap: 5px;">
+            <input type="number" class="p-jump" id="jump-input" min="1">
+            <button class="p-btn" onclick="jumpTo()" style="padding: 6px 10px;">Go</button>
+        </div>
+    </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script>
+    const PAGE_SIZE = 20;
+    let currentPage = 1;
+    let totalItems = 0;
+    let currentKeyword = "";
+
+    window.onload = async () => {
+        renderHeaderAuth('auth-box');
+        await loadPage(1);
+    };
+
+    // 加载指定页数据
+    async function loadPage(page) {
+        const list = document.getElementById('list-container');
+        list.innerHTML = '<div style="padding:40px; text-align:center; color:#999;">正在加载...</div>';
+        
+        currentPage = page;
+        const from = (page - 1) * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+
+        // 构建查询：同时获取数据和总数
+        let query = sbClient
+            .from('games')
+            .select('id, black_player, white_player, event_name, game_date, result', { count: 'exact' })
+            .order('game_date', { ascending: false })
+            .range(from, to);
+
+        if (currentKeyword) {
+            query = query.or(`black_player.ilike.%${currentKeyword}%,white_player.ilike.%${currentKeyword}%,event_name.ilike.%${currentKeyword}%`);
+        }
+
+        const { data, count, error } = await query;
+
+        if (error) {
+            list.innerHTML = `<div style="padding:20px; color:red; text-align:center">Error: ${error.message}</div>`;
+            return;
+        }
+
+        totalItems = count || 0;
+        renderList(data);
+        updatePagination();
+    }
+
+    // 渲染列表 HTML
+    function renderList(games) {
+        const container = document.getElementById('list-container');
+        if (!games || games.length === 0) {
+            container.innerHTML = '<div style="padding:40px; text-align:center; color:#999;">没有找到相关棋谱</div>';
+            return;
+        }
+
+        container.innerHTML = games.map(g => `
+            <div class="game-row" onclick="window.open('game/#${g.id}', '_blank')">
+                <div class="game-info">
+                    <div class="game-title">${g.black_player} vs ${g.white_player}</div>
+                    <div class="game-meta">📅 ${g.game_date} · ${g.event_name || '未知赛事'}</div>
+                </div>
+                <div class="game-result ${g.result && g.result.includes('+') ? 'win' : ''}">${g.result}</div>
+            </div>
+        `).join('');
+    }
+
+    // 更新分页控件状态
+    function updatePagination() {
+        const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
+        
+        document.getElementById('total-count').innerText = `共 ${totalItems} 局`;
+        document.getElementById('cur-page').innerText = currentPage;
+        document.getElementById('total-page').innerText = totalPages;
+        
+        document.getElementById('btn-prev').disabled = (currentPage <= 1);
+        document.getElementById('btn-next').disabled = (currentPage >= totalPages);
+    }
+
+    // 操作函数
+    function search(resetPage = true) {
+        currentKeyword = document.getElementById('keyword').value.trim();
+        if (resetPage) currentPage = 1;
+        loadPage(currentPage);
+    }
+
+    function prevPage() {
+        if (currentPage > 1) loadPage(currentPage - 1);
+    }
+
+    function nextPage() {
+        const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+        if (currentPage < totalPages) loadPage(currentPage + 1);
+    }
+
+    function jumpTo() {
+        const val = parseInt(document.getElementById('jump-input').value);
+        const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+        if (val >= 1 && val <= totalPages) {
+            loadPage(val);
+        } else {
+            alert(`请输入 1 - ${totalPages} 之间的页码`);
+        }
+    }
+</script>
+</body>
+</html>
