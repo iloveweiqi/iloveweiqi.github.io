@@ -14,18 +14,15 @@
         .main-stage { max-width: 1200px; margin: 0 auto; padding: 10px; display: flex; flex-direction: column; gap: 15px; }
         .game-wrapper { display: flex; gap: 15px; flex-direction: row; align-items: flex-start; }
         
-        /* 1. 棋盘盒子 */
         .board-col { flex: 0 0 auto; position: relative; background: var(--wood); border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         canvas { display: block; cursor: pointer; }
-
-        /* 2. 控制按钮区 */
         .controls-col { flex: 0 0 60px; display: flex; flex-direction: column; gap: 8px; }
+        .info-col { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 200px; }
+
         .btn-nav { padding: 12px 0; background: #fff; border: 1px solid #ccc; border-radius: 6px; font-size: 1.2rem; cursor: pointer; text-align: center; }
         .btn-nav:hover { background: #eee; }
         .btn-nav:active { background: #ddd; transform: scale(0.98); }
 
-        /* 3. 信息区 */
-        .info-col { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 200px; }
         .comment-box { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 15px; min-height: 150px; max-height: 400px; overflow-y: auto; font-size: 0.95rem; line-height: 1.6; color: #2c3e50; }
         .meta-card { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #eee; }
         
@@ -77,17 +74,20 @@
         </div>
         <div class="info-col">
             <div class="meta-card">
-                <!-- 修复点 2: 显眼的 Tab 切换 -->
                 <div class="mode-tabs">
                     <div class="mode-btn active" onclick="setMode('view')" id="t-view">浏览</div>
                     <div class="mode-btn" onclick="setMode('guess')" id="t-guess">猜局</div>
                     <div class="mode-btn" onclick="setMode('try')" id="t-try">试下</div>
                 </div>
                 <div style="font-weight:bold; font-size:1.1rem; margin-bottom:5px;"><span id="p-black">--</span> vs <span id="p-white">--</span></div>
-                <div style="color:#666; font-size:0.85rem;"><span id="p-event">--</span> · <span id="p-result">--</span></div>
-                <div style="margin-top:10px;"><a href="#" onclick="downloadSGF()" style="color:#666;text-decoration:underline;font-size:0.85rem">📥 下载 SGF</a></div>
+                <div style="color:#666; font-size:0.85rem;">
+                    <span id="p-event">--</span> · <span id="p-result">--</span> · <span id="p-date"></span>
+                </div>
+                <div style="margin-top:10px; display:flex; gap:15px; font-size:0.85rem;">
+                    <a href="#" onclick="downloadSGF()" style="color:#666;text-decoration:underline;">📥 下载 SGF</a>
+                    <a href="#" onclick="openFavModal()" style="color:var(--accent);text-decoration:none; font-weight:bold;">⭐ 加入收藏</a>
+                </div>
             </div>
-            <!-- 修复点 3: 解说框 -->
             <div class="comment-box" id="comment-content"><span style="color:#999">暂无解说...</span></div>
         </div>
     </div>
@@ -98,12 +98,34 @@
     <div class="list-box" id="game-list">Loading...</div>
 </div>
 
+<!-- 收藏弹窗 -->
+<div id="fav-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999; justify-content:center; align-items:center;">
+    <div style="background:#fff; padding:20px; border-radius:8px; width:300px; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+        <h3 style="margin-top:0;">添加到收藏夹</h3>
+        <div style="margin-bottom:15px;">
+            <label style="display:block; font-size:0.9rem; color:#666; margin-bottom:5px;">选择目录:</label>
+            <select id="fav-folder-select" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
+                <option value="">根目录 (Root)</option>
+            </select>
+        </div>
+        <div style="margin-bottom:15px;">
+            <label style="display:block; font-size:0.9rem; color:#666; margin-bottom:5px;">备注:</label>
+            <input type="text" id="fav-title" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; box-sizing:border-box;">
+        </div>
+        <div style="text-align:right; display:flex; gap:10px; justify-content:flex-end;">
+            <button onclick="document.getElementById('fav-modal').style.display='none'" style="padding:6px 12px; border:1px solid #ddd; background:#fff; cursor:pointer; border-radius:4px;">取消</button>
+            <button onclick="saveFavorite()" style="padding:6px 12px; border:none; background:var(--primary); color:#fff; cursor:pointer; border-radius:4px;">保存</button>
+        </div>
+    </div>
+</div>
+
 <script src="../assets/js/config.js"></script>
 <script src="../assets/js/core.js"></script>
 <script>
     const board = new GoBoard('game-canvas');
     const engine = new GoEngine();
     let moves=[], curStep=0, mode='view', tryHist=[], meta={}, sgfStr="";
+    let gameData = null; // 全局存储游戏数据
     const sndMove = new Audio('../assets/sound/move.wav');
 
     window.onload = async () => {
@@ -112,8 +134,9 @@
         if(!id) return location.href="../index.html";
         
         const { data } = await sbClient.from('games').select('*').eq('id', id).single();
-        if(!data) { alert('Err'); return; }
+        if(!data) { alert('读取失败'); return; }
 
+        gameData = data; // 保存供下载使用
         sgfStr = data.sgf_content;
         const res = parseSGF(sgfStr);
         moves = res.moves; meta = res.meta;
@@ -122,14 +145,14 @@
         document.getElementById('p-white').innerText = data.white_player;
         document.getElementById('p-event').innerText = data.event_name;
         document.getElementById('p-result').innerText = data.result;
+        document.getElementById('p-date').innerText = data.game_date;
         document.title = `${data.black_player} vs ${data.white_player}`;
 
-        // --- 修改点开始：默认跳到最后一步 ---
-        curStep = moves.length; // 设置为最大手数
-        syncEngine();           // 计算盘面到最后
-        updateUI();             // 更新界面
-        // --- 修改点结束 ---
-
+        // 默认显示终局
+        curStep = moves.length;
+        syncEngine();
+        updateUI();
+        
         board.clickHandler = (x, y) => handleClick(x, y);
         loadList();
     };
@@ -176,13 +199,11 @@
         board.draw(engine.board, last, moveMap);
     }
 
-    // 渲染解说
     function renderComment() {
         const box = document.getElementById('comment-content');
         let txt = "";
         if (mode === 'try') txt = `【试下模式】\n变化手数: ${tryHist.length}`;
         else if (curStep > 0) {
-            // 获取当前步的 comment
             const m = moves[curStep-1];
             txt = m.comment || ""; 
             if(!txt) txt = `<span style="color:#ccc">第 ${curStep} 手 (无解说)</span>`;
@@ -202,13 +223,75 @@
     }
     function showMsg(t,s) { const e=document.getElementById('msg'); e.innerText=t; e.style.opacity=1; e.style.background=s?"#27ae60":"rgba(0,0,0,0.8)"; setTimeout(()=>e.style.opacity=0,1000); }
     function playSound() { sndMove.currentTime=0; sndMove.play().catch(()=>{}); }
-    window.downloadSGF = function() { const b=new Blob([sgfStr],{type:'application/x-go-sgf'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download="game.sgf"; a.click(); }
+    
+    // --- 3. 修改文件名: XXX vs XXX Date.sgf ---
+    window.downloadSGF = function() {
+        if(!gameData) return;
+        const b = new Blob([sgfStr],{type:'application/x-go-sgf'});
+        const u = URL.createObjectURL(b);
+        const a = document.createElement('a');
+        a.href = u;
+        // 格式：柯洁 vs 申真谞 2025-12-05.sgf
+        a.download = `${gameData.black_player} vs ${gameData.white_player} ${gameData.game_date}.sgf`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
     
     async function loadList() {
         const l = document.getElementById('game-list');
         const { data } = await sbClient.from('games').select('id,black_player,white_player,result,game_date,event_name').order('game_date',{ascending:false}).limit(10);
         if(!data) return;
         l.innerHTML = data.map(g => `<div class="game-item" onclick="window.location.hash='${g.id}';window.location.reload()"><div style="font-weight:bold">${g.black_player} vs ${g.white_player}</div><div>${g.result}</div></div>`).join('');
+    }
+
+    // --- 收藏相关逻辑 ---
+    async function openFavModal() {
+        const { data: { user } } = await sbClient.auth.getUser();
+        if (!user) {
+            alert("请先登录");
+            return location.href = "../login.html";
+        }
+
+        // 只查询根目录下的文件夹 (parent_id is null)
+        const { data: folders } = await sbClient
+            .from('favorites')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('is_folder', true)
+            .is('parent_id', null) 
+            .order('created_at');
+
+        const select = document.getElementById('fav-folder-select');
+        select.innerHTML = '<option value="">根目录 (Root)</option>';
+        
+        if (folders) {
+            folders.forEach(f => {
+                select.add(new Option(`📁 ${f.title}`, f.id));
+            });
+        }
+
+        document.getElementById('fav-title').value = `${gameData.black_player} vs ${gameData.white_player} ${gameData.game_date}`;
+        document.getElementById('fav-modal').style.display = 'flex';
+    }
+
+    async function saveFavorite() {
+        const { data: { user } } = await sbClient.auth.getUser();
+        const folderId = document.getElementById('fav-folder-select').value || null;
+        const title = document.getElementById('fav-title').value;
+        const id = window.location.hash.substring(1); 
+
+        const { error } = await sbClient.from('favorites').insert({
+            user_id: user.id,
+            game_id: id,
+            parent_id: folderId, // 只能是一级目录
+            title: title,
+            is_folder: false
+        });
+
+        if (error) alert("收藏失败: " + error.message);
+        else {
+            alert("收藏成功！");
+            document.getElementById('fav-modal').style.display = 'none';
+        }
     }
 </script>
 </body>
