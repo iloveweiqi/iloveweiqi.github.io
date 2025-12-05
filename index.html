@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>爱围棋 | iWeiQi - 在线棋谱库</title>
+    <title>爱围棋 | iWeiQi</title>
     <!-- 引入 Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -20,6 +20,7 @@
             background-color: var(--bg);
             margin: 0;
             color: #333;
+            padding-bottom: 30px;
         }
 
         /* --- 导航栏 --- */
@@ -35,6 +36,7 @@
             top: 0;
             z-index: 99;
         }
+        .logo-area { display: flex; align-items: center; gap: 15px; }
         .logo {
             font-size: 1.2rem;
             font-weight: bold;
@@ -42,8 +44,9 @@
             color: #333;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 5px;
         }
+        
         .nav-btn {
             padding: 6px 12px;
             border: 1px solid #ddd;
@@ -68,9 +71,7 @@
             margin-bottom: 10px;
             font-weight: bold;
             color: #555;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            font-size: 1.1rem;
         }
 
         .hero-card {
@@ -111,6 +112,7 @@
             background: var(--wood);
             border-radius: 2px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative;
         }
         canvas {
             width: 100%;
@@ -217,23 +219,25 @@
 
 <!-- 头部 -->
 <header>
-    <a href="index.html" class="logo">
-        <span>⚫⚪</span> 爱围棋
-    </a>
-    <!-- 动态显示：登录/注册 或 用户名 -->
-    <div id="auth-box"></div>
+    <div class="logo-area">
+        <a href="index.html" class="logo" data-i18n="site_name">
+            <span>⚫⚪</span> 爱围棋
+        </a>
+    </div>
+    <!-- 动态显示：语言切换 + 登录/注册/用户名 -->
+    <div id="auth-box" style="display:flex; align-items:center;"></div>
 </header>
 
 <div class="container">
 
-    <!-- 1. 最新对局展示 -->
+    <!-- 1. 最新对局展示 (Hero) -->
     <div class="hero-section">
         <div class="section-title">
-            <span>🔥 本日推荐 (Latest Match)</span>
+            <span data-i18n="hero_title">🔥 本日推荐</span>
         </div>
         
         <div class="hero-card">
-            <!-- 信息头：手机端会自动换行 -->
+            <!-- 信息头：手机端会自动垂直排列 -->
             <div class="game-header">
                 <div class="vs-text">
                     <span id="h-black">--</span> (B) vs <span id="h-white">--</span> (W)
@@ -250,36 +254,36 @@
 
             <!-- 按钮 -->
             <div class="hero-action">
-                <a id="enter-btn" href="#" class="btn-enter">进入详情 / 猜局 / 试下</a>
+                <a id="enter-btn" href="#" class="btn-enter" data-i18n="enter_game">进入详情 / 猜局 / 试下</a>
             </div>
         </div>
     </div>
 
-    <!-- 2. 简单搜索 -->
+    <!-- 2. 搜索栏 -->
     <div class="search-bar">
-        <input type="text" class="inp" id="k-word" placeholder="搜索棋手、赛事...">
-        <button class="btn-search" onclick="doSearch()">搜索</button>
+        <input type="text" class="inp" id="k-word" data-i18n="search_placeholder" placeholder="搜索棋手、赛事...">
+        <button class="btn-search" onclick="doSearch()" data-i18n="search_btn">搜索</button>
     </div>
 
     <!-- 3. 最新录入列表 -->
     <div class="list-section">
         <div class="list-header">
-            <span>📚 最新录入 (Top 10)</span>
-            <a href="library.html" class="link-all">查看全部棋谱 &gt;</a>
+            <span data-i18n="latest_title">📚 最新录入</span>
+            <a href="library.html" class="link-all" data-i18n="view_all">查看全部棋谱 &gt;</a>
         </div>
         <div id="game-list">
-            <div style="padding:20px; text-align:center; color:#999;">Loading...</div>
+            <div style="padding:20px; text-align:center; color:#999;" data-i18n="loading">Loading...</div>
         </div>
     </div>
 
 </div>
 
-<!-- 引入脚本 -->
+<!-- 引入公共配置和核心库 -->
 <script src="assets/js/config.js"></script>
 <script src="assets/js/core.js"></script>
 
 <script>
-    // 立即初始化棋盘对象，防止花屏 (core.js 会在内部处理安全检查)
+    // 立即初始化棋盘 (core.js 会自动处理 resize 和安全检查)
     const board = new GoBoard('main-board');
     // 配置首页棋盘：显示坐标，不显示手数
     board.config.showCoords = true;
@@ -288,7 +292,8 @@
     const engine = new GoEngine();
 
     window.onload = async () => {
-        // 1. 渲染头部登录状态 (config.js 中的公共函数)
+        // 1. 渲染头部登录状态 & 语言切换 (config.js 中的公共函数)
+        // 会自动调用 applyLanguage() 进行翻译
         renderHeaderAuth('auth-box');
 
         // 2. 加载数据
@@ -297,14 +302,14 @@
 
     async function loadData(filters = {}) {
         const list = document.getElementById('game-list');
-        list.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">Loading...</div>';
+        list.innerHTML = `<div style="padding:20px; text-align:center; color:#999;">${t('loading')}</div>`;
 
-        // 查询最近的 20 条数据
+        // 查询最近的 10 条数据
         let q = sbClient
             .from('games')
             .select('*')
             .order('game_date', { ascending: false }) // 按比赛日期排序
-            .limit(20);
+            .limit(10);
 
         // 如果有搜索关键词
         if (filters.word) {
@@ -316,13 +321,13 @@
 
         // 错误处理
         if (error) {
-            list.innerHTML = `<div style="padding:20px; text-align:center; color:red;">加载失败: ${error.message}</div>`;
+            list.innerHTML = `<div style="padding:20px; text-align:center; color:red;">Error: ${error.message}</div>`;
             return;
         }
 
         // 空数据处理
         if (!data || data.length === 0) {
-            list.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">暂无数据</div>';
+            list.innerHTML = `<div style="padding:20px; text-align:center; color:#999;">${t('no_data')}</div>`;
             document.getElementById('h-event').innerText = "No Games";
             return;
         }
@@ -331,7 +336,7 @@
         const top = data[0];
         document.getElementById('h-black').innerText = top.black_player;
         document.getElementById('h-white').innerText = top.white_player;
-        document.getElementById('h-event').innerText = top.event_name || '未知赛事';
+        document.getElementById('h-event').innerText = top.event_name || 'Event';
         document.getElementById('h-result').innerText = top.result || '-';
         
         // 更新跳转链接 (使用 Hash 路由)
@@ -347,9 +352,8 @@
             board.draw(engine.board, parsed.moves[parsed.moves.length-1]);
         }
 
-        // --- B. 渲染列表 (取前10条) ---
-        const top10 = data.slice(0, 10);
-        list.innerHTML = top10.map(g => `
+        // --- B. 渲染列表 ---
+        list.innerHTML = data.map(g => `
             <div class="game-item">
                 <div>
                     <a href="game/#${g.id}" class="item-title">
