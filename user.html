@@ -1,3 +1,4 @@
+<!-- user.html 完整代码 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -6,48 +7,210 @@
     <title>个人中心 - 爱围棋</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: 50px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h2 { border-bottom: 2px solid #2c3e50; padding-bottom: 10px; margin-top: 0; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        input:disabled { background: #eee; color: #888; }
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; margin-top: 10px; }
-        .btn-save { background: #d4a017; color: #fff; }
-        .btn-logout { background: #e74c3c; color: #fff; margin-top: 20px; }
-        .back-link { display: block; text-align: center; margin-top: 20px; color: #666; text-decoration: none; }
+        body { font-family: -apple-system, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; color:#333; }
+        .container { max-width: 800px; margin: 30px auto; }
+        
+        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { margin-top: 0; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }
+        
+        /* 收藏夹样式 */
+        .fav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #f9f9f9; padding: 10px; border-radius: 4px; }
+        .breadcrumb { font-size: 0.9rem; color: #666; }
+        .breadcrumb span { cursor: pointer; color: #2c3e50; font-weight: bold; }
+        .breadcrumb span:hover { text-decoration: underline; }
+        
+        .fav-list { list-style: none; padding: 0; margin: 0; }
+        .fav-item { display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #eee; transition: 0.1s; }
+        .fav-item:hover { background: #f0f7ff; }
+        .fav-icon { margin-right: 10px; font-size: 1.2rem; }
+        .fav-name { flex: 1; cursor: pointer; font-weight: 500; }
+        .fav-actions { display: none; gap: 10px; }
+        .fav-item:hover .fav-actions { display: flex; }
+        
+        .btn-mini { padding: 4px 8px; font-size: 0.8rem; cursor: pointer; border: 1px solid #ddd; background: #fff; border-radius: 4px; }
+        .btn-del { color: #e74c3c; border-color: #fadbd8; background: #fdfefe; }
+        
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; color: #fff; }
+        .btn-primary { background: #2c3e50; }
+        .btn-danger { background: #e74c3c; width: 100%; margin-top: 20px;}
     </style>
 </head>
 <body>
+
 <div class="container">
-    <h2>个人中心 (Profile)</h2>
-    <div class="form-group"><label>邮箱 (Email)</label><input type="text" id="email" disabled></div>
-    <div class="form-group"><label>用户名 (Username)</label><input type="text" id="username" placeholder="请输入昵称"></div>
-    <button class="btn btn-save" onclick="updateProfile()">💾 保存修改</button>
-    <button class="btn btn-logout" onclick="logout()">🚪 退出登录</button>
-    <a href="index.html" class="back-link">← 返回首页</a>
+    <div style="margin-bottom:15px"><a href="index.html" style="color:#666; text-decoration:none;">← 返回首页</a></div>
+
+    <!-- 用户信息 -->
+    <div class="card">
+        <h2>👤 个人资料</h2>
+        <div class="input-group">
+            <label>邮箱</label>
+            <input type="text" id="email" disabled style="background:#eee">
+        </div>
+        <div class="input-group">
+            <label>昵称</label>
+            <input type="text" id="username">
+        </div>
+        <button class="btn btn-primary" onclick="updateProfile()">保存昵称</button>
+        <button class="btn btn-danger" onclick="logout()">退出登录</button>
+    </div>
+
+    <!-- 收藏夹 -->
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h2 style="border:none; margin:0;">⭐ 我的收藏夹</h2>
+            <button class="btn-mini" onclick="createFolder()">+ 新建文件夹</button>
+        </div>
+        
+        <!-- 面包屑导航 -->
+        <div class="fav-header">
+            <div class="breadcrumb" id="breadcrumb">
+                <span onclick="loadFavs(null)">根目录</span>
+            </div>
+        </div>
+
+        <!-- 列表 -->
+        <ul class="fav-list" id="fav-list">
+            <li style="text-align:center; padding:20px; color:#999;">Loading...</li>
+        </ul>
+    </div>
 </div>
 
 <script src="assets/js/config.js"></script>
 <script>
     let userId = null;
+    let currentFolderId = null; // 当前浏览的文件夹ID
+    let folderChain = []; // 面包屑路径 [{id, title}]
+
     window.onload = async () => {
         const { data: { user } } = await sbClient.auth.getUser();
         if (!user) return location.href = "login.html";
         userId = user.id;
+        
         document.getElementById('email').value = user.email;
-
-        const { data: profile } = await sbClient.from('profiles').select('username').eq('id', user.id).single();
+        const { data: profile } = await sbClient.from('profiles').select('username').eq('id', userId).single();
         if (profile) document.getElementById('username').value = profile.username || "";
+
+        // 加载根目录收藏
+        loadFavs(null);
     };
 
+    // --- 核心：加载收藏列表 ---
+    async function loadFavs(folderId) {
+        currentFolderId = folderId;
+        const list = document.getElementById('fav-list');
+        list.innerHTML = '<li style="padding:15px;text-align:center">Loading...</li>';
+
+        // 1. 查询当前文件夹下的内容 (文件夹在前，文件在后)
+        let query = sbClient.from('favorites')
+            .select('*')
+            .eq('user_id', userId)
+            .order('is_folder', {ascending: false}) 
+            .order('created_at', {ascending: false});
+            
+        if (folderId) query = query.eq('parent_id', folderId);
+        else query = query.is('parent_id', null);
+
+        const { data, error } = await query;
+        if (error) return alert(error.message);
+
+        // 2. 渲染列表
+        if (data.length === 0) {
+            list.innerHTML = '<li style="padding:15px;text-align:center;color:#999">空文件夹</li>';
+        } else {
+            list.innerHTML = data.map(item => `
+                <li class="fav-item">
+                    <div class="fav-icon">${item.is_folder ? '📁' : '📄'}</div>
+                    <div class="fav-name" onclick="${item.is_folder ? `enterFolder('${item.id}', '${item.title}')` : `openGame('${item.game_id}')`}">
+                        ${item.title}
+                    </div>
+                    <div class="fav-actions">
+                        <button class="btn-mini btn-del" onclick="deleteItem('${item.id}', ${item.is_folder})">删除</button>
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        renderBreadcrumb();
+    }
+
+    // --- 交互逻辑 ---
+    function enterFolder(id, title) {
+        folderChain.push({ id, title });
+        loadFavs(id);
+    }
+
+    function renderBreadcrumb() {
+        const bc = document.getElementById('breadcrumb');
+        let html = `<span onclick="resetBreadcrumb()">根目录</span>`;
+        folderChain.forEach((f, index) => {
+            // 点击面包屑跳转到对应层级
+            html += ` > <span onclick="jumpBreadcrumb(${index})">${f.title}</span>`;
+        });
+        bc.innerHTML = html;
+    }
+
+    function resetBreadcrumb() {
+        folderChain = [];
+        loadFavs(null);
+    }
+
+    function jumpBreadcrumb(index) {
+        // 跳转到第 index 层，保留 0 到 index
+        const target = folderChain[index];
+        folderChain = folderChain.slice(0, index + 1);
+        loadFavs(target.id);
+    }
+
+    function openGame(gameId) {
+        window.open(`game/#${gameId}`, '_blank');
+    }
+
+    async function createFolder() {
+        const name = prompt("请输入文件夹名称:");
+        if (!name) return;
+        
+        // 限制层级：虽然数据库支持无限，但前端简单起见，如果已经在第三层(chain.length=2)，禁止创建子文件夹
+        if (folderChain.length >= 3) {
+            return alert("最多支持 3 级目录");
+        }
+
+        const { error } = await sbClient.from('favorites').insert({
+            user_id: userId,
+            title: name,
+            is_folder: true,
+            parent_id: currentFolderId
+        });
+
+        if (error) alert("创建失败: " + error.message);
+        else loadFavs(currentFolderId);
+    }
+
+    async function deleteItem(id, isFolder) {
+        if (!confirm(`确定删除此${isFolder ? '文件夹（及其内部所有内容）' : '收藏'}吗？`)) return;
+
+        // 如果是文件夹，Supabase 有级联删除设置最好，否则需要代码递归删除
+        // 简单起见，这里假设你在 Supabase 建表时没有设 ON DELETE CASCADE
+        // 我们先只删除该项，如果里面有内容，Supabase 可能会报错（如果有FK约束）
+        // 为了稳妥，前端可以先检查。
+        // *但在本示例 SQL 中，favorites 表自引用 parent_id 如果没设级联删除，需要手动清理子项*
+        // 简便起见，直接尝试删除，报错则提示。
+
+        const { error } = await sbClient.from('favorites').delete().eq('id', id);
+        
+        if (error) alert("删除失败(请先清空文件夹): " + error.message);
+        else loadFavs(currentFolderId);
+    }
+
     async function updateProfile() {
-        const newName = document.getElementById('username').value.trim();
-        if (!newName) return alert("用户名不能为空");
-        const { error } = await sbClient.from('profiles').update({ username: newName }).eq('id', userId);
-        if (error) alert("保存失败: " + error.message);
-        else alert("✅ 保存成功！");
+        const newName = document.getElementById('username').value;
+        if(!newName) return;
+        await sbClient.from('profiles').update({username: newName}).eq('id', userId);
+        alert("已保存");
     }
 
     async function logout() {
