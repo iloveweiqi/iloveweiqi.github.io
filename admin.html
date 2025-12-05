@@ -2,7 +2,6 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>后台 - 爱围棋</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -10,64 +9,42 @@
         .sidebar { width: 200px; background: #fff; border-right: 1px solid #ddd; padding: 20px; }
         .main { flex: 1; padding: 20px; }
         .menu-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
-        .menu-item:hover { background: #f9f9f9; }
-        
         .form-box { background: #fff; padding: 20px; border-radius: 8px; max-width: 800px; }
         input, textarea { width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; box-sizing: border-box;}
         .btn { padding: 10px 20px; background: #2c3e50; color: #fff; border: none; cursor: pointer; }
-        
         table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; }
         th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
     </style>
 </head>
 <body>
-
 <div class="sidebar">
     <h3>Admin</h3>
     <div class="menu-item" onclick="location.href='index.html'">← 返回首页</div>
-    <div class="menu-item" onclick="logout()">退出登录</div>
+    <div class="menu-item" onclick="sbClient.auth.signOut().then(()=>location.href='index.html')">退出登录</div>
 </div>
-
 <div class="main">
     <h2>上传 SGF</h2>
     <div class="form-box">
-        <textarea id="sgf" rows="5" placeholder="粘贴 SGF 内容..." oninput="parse()"></textarea>
-        <div style="display:flex; gap:10px">
-            <input type="text" id="pb" placeholder="黑方">
-            <input type="text" id="pw" placeholder="白方">
-        </div>
-        <div style="display:flex; gap:10px">
-            <input type="text" id="ev" placeholder="赛事">
-            <input type="text" id="dt" placeholder="日期 YYYY-MM-DD">
-            <input type="text" id="re" placeholder="结果">
-        </div>
+        <textarea id="sgf" rows="5" placeholder="粘贴 SGF..." oninput="parse()"></textarea>
+        <div style="display:flex; gap:10px"><input type="text" id="pb" placeholder="黑方"><input type="text" id="pw" placeholder="白方"></div>
+        <div style="display:flex; gap:10px"><input type="text" id="ev" placeholder="赛事"><input type="text" id="dt" placeholder="日期 YYYY-MM-DD"><input type="text" id="re" placeholder="结果"></div>
         <button class="btn" onclick="upload()">提交上传</button>
     </div>
-
-    <h2>已上传棋谱</h2>
+    <h2>已上传列表</h2>
     <table id="table"></table>
 </div>
-
 <script src="assets/js/config.js"></script>
 <script src="assets/js/core.js"></script>
 <script>
     let user = null;
-    
     window.onload = async () => {
         const { data } = await sbClient.auth.getUser();
         if(!data.user) return location.href="login.html";
         user = data.user;
-        
-        // 检查权限
         const { data: profile } = await sbClient.from('profiles').select('*').eq('id', user.id).single();
-        if(!profile || !profile.is_admin) {
-            alert("非管理员");
-            return location.href="index.html";
-        }
-        
+        if(!profile || !profile.is_admin) { alert("非管理员"); return location.href="index.html"; }
         loadList();
     };
-
     function parse() {
         const s = document.getElementById('sgf').value;
         const { meta } = parseSGF(s);
@@ -77,7 +54,6 @@
         if(meta.RE) document.getElementById('re').value = meta.RE;
         if(meta.DT) document.getElementById('dt').value = meta.DT.split(',')[0];
     }
-
     async function upload() {
         const payload = {
             black_player: document.getElementById('pb').value,
@@ -88,38 +64,14 @@
             sgf_content: document.getElementById('sgf').value,
             uploader_id: user.id
         };
-        
         const { error } = await sbClient.from('games').insert(payload);
-        if(error) alert(error.message);
-        else {
-            alert("Success");
-            document.getElementById('sgf').value = "";
-            loadList();
-        }
+        if(error) alert(error.message); else { alert("Success"); document.getElementById('sgf').value=""; loadList(); }
     }
-
     async function loadList() {
         const { data } = await sbClient.from('games').select('*').order('created_at', {ascending:false}).limit(20);
-        document.getElementById('table').innerHTML = data.map(g => `
-            <tr>
-                <td>${g.game_date}</td>
-                <td>${g.black_player} vs ${g.white_player}</td>
-                <td><button onclick="del('${g.id}')" style="color:red">删除</button></td>
-            </tr>
-        `).join('');
+        document.getElementById('table').innerHTML = data.map(g => `<tr><td>${g.game_date}</td><td>${g.black_player} vs ${g.white_player}</td><td><button onclick="del('${g.id}')" style="color:red">Del</button></td></tr>`).join('');
     }
-
-    async function del(id) {
-        if(confirm("Delete?")) {
-            await sbClient.from('games').delete().eq('id', id);
-            loadList();
-        }
-    }
-
-    async function logout() {
-        await sbClient.auth.signOut();
-        location.href = "index.html";
-    }
+    async function del(id) { if(confirm("Delete?")) { await sbClient.from('games').delete().eq('id', id); loadList(); } }
 </script>
 </body>
 </html>
