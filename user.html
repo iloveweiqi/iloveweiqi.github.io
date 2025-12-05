@@ -1,4 +1,3 @@
-<!-- user.html 完整代码 -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -13,7 +12,6 @@
         .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
         h2 { margin-top: 0; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }
         
-        /* 收藏夹样式 */
         .fav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: #f9f9f9; padding: 10px; border-radius: 4px; }
         .breadcrumb { font-size: 0.9rem; color: #666; }
         .breadcrumb span { cursor: pointer; color: #2c3e50; font-weight: bold; }
@@ -24,10 +22,13 @@
         .fav-item:hover { background: #f0f7ff; }
         .fav-icon { margin-right: 10px; font-size: 1.2rem; }
         .fav-name { flex: 1; cursor: pointer; font-weight: 500; }
-        .fav-actions { display: none; gap: 10px; }
+        
+        /* 按钮组 */
+        .fav-actions { display: none; gap: 5px; }
         .fav-item:hover .fav-actions { display: flex; }
         
         .btn-mini { padding: 4px 8px; font-size: 0.8rem; cursor: pointer; border: 1px solid #ddd; background: #fff; border-radius: 4px; }
+        .btn-edit { color: #2980b9; border-color: #d6eaf8; background: #ebf5fb; }
         .btn-del { color: #e74c3c; border-color: #fadbd8; background: #fdfefe; }
         
         .input-group { margin-bottom: 15px; }
@@ -63,17 +64,15 @@
     <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <h2 style="border:none; margin:0;">⭐ 我的收藏夹</h2>
-            <button class="btn-mini" onclick="createFolder()">+ 新建文件夹</button>
+            <button class="btn-mini" id="btn-create-folder" onclick="createFolder()">+ 新建文件夹</button>
         </div>
         
-        <!-- 面包屑导航 -->
         <div class="fav-header">
             <div class="breadcrumb" id="breadcrumb">
                 <span onclick="loadFavs(null)">根目录</span>
             </div>
         </div>
 
-        <!-- 列表 -->
         <ul class="fav-list" id="fav-list">
             <li style="text-align:center; padding:20px; color:#999;">Loading...</li>
         </ul>
@@ -83,8 +82,8 @@
 <script src="assets/js/config.js"></script>
 <script>
     let userId = null;
-    let currentFolderId = null; // 当前浏览的文件夹ID
-    let folderChain = []; // 面包屑路径 [{id, title}]
+    let currentFolderId = null; // null 表示根目录
+    let currentFolderName = ""; // 用于面包屑显示
 
     window.onload = async () => {
         const { data: { user } } = await sbClient.auth.getUser();
@@ -95,17 +94,20 @@
         const { data: profile } = await sbClient.from('profiles').select('username').eq('id', userId).single();
         if (profile) document.getElementById('username').value = profile.username || "";
 
-        // 加载根目录收藏
         loadFavs(null);
     };
 
-    // --- 核心：加载收藏列表 ---
-    async function loadFavs(folderId) {
+    async function loadFavs(folderId, folderName = "") {
         currentFolderId = folderId;
+        currentFolderName = folderName;
+        
+        // 更新 UI 状态
+        document.getElementById('btn-create-folder').style.display = folderId ? 'none' : 'block'; // 只允许根目录建文件夹
+        updateBreadcrumb();
+
         const list = document.getElementById('fav-list');
         list.innerHTML = '<li style="padding:15px;text-align:center">Loading...</li>';
 
-        // 1. 查询当前文件夹下的内容 (文件夹在前，文件在后)
         let query = sbClient.from('favorites')
             .select('*')
             .eq('user_id', userId)
@@ -118,52 +120,31 @@
         const { data, error } = await query;
         if (error) return alert(error.message);
 
-        // 2. 渲染列表
         if (data.length === 0) {
-            list.innerHTML = '<li style="padding:15px;text-align:center;color:#999">空文件夹</li>';
+            list.innerHTML = '<li style="padding:15px;text-align:center;color:#999">暂无内容</li>';
         } else {
             list.innerHTML = data.map(item => `
                 <li class="fav-item">
                     <div class="fav-icon">${item.is_folder ? '📁' : '📄'}</div>
-                    <div class="fav-name" onclick="${item.is_folder ? `enterFolder('${item.id}', '${item.title}')` : `openGame('${item.game_id}')`}">
+                    <div class="fav-name" onclick="${item.is_folder ? `loadFavs('${item.id}', '${item.title}')` : `openGame('${item.game_id}')`}">
                         ${item.title}
                     </div>
                     <div class="fav-actions">
+                        <button class="btn-mini btn-edit" onclick="renameItem('${item.id}', '${item.title}')">重命名</button>
                         <button class="btn-mini btn-del" onclick="deleteItem('${item.id}', ${item.is_folder})">删除</button>
                     </div>
                 </li>
             `).join('');
         }
-
-        renderBreadcrumb();
     }
 
-    // --- 交互逻辑 ---
-    function enterFolder(id, title) {
-        folderChain.push({ id, title });
-        loadFavs(id);
-    }
-
-    function renderBreadcrumb() {
+    function updateBreadcrumb() {
         const bc = document.getElementById('breadcrumb');
-        let html = `<span onclick="resetBreadcrumb()">根目录</span>`;
-        folderChain.forEach((f, index) => {
-            // 点击面包屑跳转到对应层级
-            html += ` > <span onclick="jumpBreadcrumb(${index})">${f.title}</span>`;
-        });
+        let html = `<span onclick="loadFavs(null)">根目录</span>`;
+        if (currentFolderId) {
+            html += ` > <span>${currentFolderName}</span>`;
+        }
         bc.innerHTML = html;
-    }
-
-    function resetBreadcrumb() {
-        folderChain = [];
-        loadFavs(null);
-    }
-
-    function jumpBreadcrumb(index) {
-        // 跳转到第 index 层，保留 0 到 index
-        const target = folderChain[index];
-        folderChain = folderChain.slice(0, index + 1);
-        loadFavs(target.id);
     }
 
     function openGame(gameId) {
@@ -171,39 +152,50 @@
     }
 
     async function createFolder() {
+        if (currentFolderId) return alert("只能在根目录创建文件夹");
         const name = prompt("请输入文件夹名称:");
         if (!name) return;
-        
-        // 限制层级：虽然数据库支持无限，但前端简单起见，如果已经在第三层(chain.length=2)，禁止创建子文件夹
-        if (folderChain.length >= 3) {
-            return alert("最多支持 3 级目录");
-        }
 
         const { error } = await sbClient.from('favorites').insert({
             user_id: userId,
             title: name,
             is_folder: true,
-            parent_id: currentFolderId
+            parent_id: null
         });
 
         if (error) alert("创建失败: " + error.message);
-        else loadFavs(currentFolderId);
+        else loadFavs(null);
+    }
+
+    async function renameItem(id, oldName) {
+        const newName = prompt("重命名:", oldName);
+        if (!newName || newName === oldName) return;
+
+        const { error } = await sbClient.from('favorites')
+            .update({ title: newName })
+            .eq('id', id);
+
+        if (error) alert("重命名失败: " + error.message);
+        else loadFavs(currentFolderId, currentFolderName);
     }
 
     async function deleteItem(id, isFolder) {
         if (!confirm(`确定删除此${isFolder ? '文件夹（及其内部所有内容）' : '收藏'}吗？`)) return;
 
-        // 如果是文件夹，Supabase 有级联删除设置最好，否则需要代码递归删除
-        // 简单起见，这里假设你在 Supabase 建表时没有设 ON DELETE CASCADE
-        // 我们先只删除该项，如果里面有内容，Supabase 可能会报错（如果有FK约束）
-        // 为了稳妥，前端可以先检查。
-        // *但在本示例 SQL 中，favorites 表自引用 parent_id 如果没设级联删除，需要手动清理子项*
-        // 简便起见，直接尝试删除，报错则提示。
+        // 如果是文件夹，先检查是否为空（Supabase 如果没设置级联删除，直接删会报错）
+        // 这里尝试直接删除，如果用户没有在数据库设级联，前端手动删太麻烦。
+        // 建议你在 Supabase SQL 加上 ON DELETE CASCADE (之前代码没加，可能需要手动清空)
+        // 简单处理：先删。
+        
+        // 尝试删除子项 (如果是文件夹)
+        if (isFolder) {
+             await sbClient.from('favorites').delete().eq('parent_id', id);
+        }
 
         const { error } = await sbClient.from('favorites').delete().eq('id', id);
         
-        if (error) alert("删除失败(请先清空文件夹): " + error.message);
-        else loadFavs(currentFolderId);
+        if (error) alert("删除失败: " + error.message);
+        else loadFavs(currentFolderId, currentFolderName);
     }
 
     async function updateProfile() {
