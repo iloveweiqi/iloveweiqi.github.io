@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>详情 - 爱围棋</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #2c3e50; --accent: #d4a017; --bg: #f4f6f8; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 30px; }
+        .container { max-width: 600px; margin: 0 auto; padding: 10px; }
+        
+        header { background: #fff; height: 50px; display: flex; align-items: center; padding: 0 15px; margin-bottom: 10px; }
+        .back { text-decoration: none; color: #555; }
+        
+        .info-card { background: #fff; padding: 15px; text-align: center; border-radius: 8px; margin-bottom: 15px; }
+        .board-box { width: 100%; aspect-ratio: 1/1; background: #eebb76; position: relative; margin-bottom: 15px; }
+        canvas { width: 100%; height: 100%; cursor: pointer; }
+        
+        .overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.7); color: #fff; padding: 10px 20px; border-radius: 20px; opacity: 0; pointer-events: none; transition: 0.3s; font-weight: bold; }
+        
+        .controls { background: #fff; padding: 15px; border-radius: 8px; }
+        .tabs { display: flex; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; }
+        .tab { flex: 1; text-align: center; padding: 8px; cursor: pointer; background: #f9f9f9; }
+        .tab.active { background: var(--primary); color: #fff; }
+        
+        .btns { display: flex; gap: 5px; margin-bottom: 10px; }
+        .btn { flex: 1; padding: 10px; border: 1px solid #ddd; background: #fff; border-radius: 4px; font-size: 1.2rem; cursor: pointer; }
+        .btn:active { background: #eee; }
+    </style>
+</head>
+<body>
+
+<header><a href="index.html" class="back">‹ 返回首页</a></header>
+
+<div class="container">
+    <div class="info-card">
+        <h2 style="margin:0 0 5px 0"><span id="p-black"></span> vs <span id="p-white"></span></h2>
+        <div style="color:#666"><span id="p-event"></span> · <span id="p-result"></span></div>
+    </div>
+
+    <div class="board-box">
+        <canvas id="game-canvas"></canvas>
+        <div id="msg" class="overlay">Correct!</div>
+    </div>
+
+    <div class="controls">
+        <div class="tabs">
+            <div class="tab active" onclick="setMode('view')" id="t-view">浏览 (View)</div>
+            <div class="tab" onclick="setMode('guess')" id="t-guess">猜局 (Guess)</div>
+            <div class="tab" onclick="setMode('try')" id="t-try">试下 (Try)</div>
+        </div>
+
+        <div class="btns" id="play-btns">
+            <button class="btn" onclick="nav.first()">|‹</button>
+            <button class="btn" onclick="nav.prev()">‹</button>
+            <button class="btn" onclick="nav.next()">›</button>
+            <button class="btn" onclick="nav.last()">›|</button>
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center">
+            <span>手数: <span id="step-num">0</span></span>
+            <button onclick="downloadSGF()" style="border:none; background:none; color:#666; text-decoration:underline; cursor:pointer">📥 下载 SGF</button>
+        </div>
+    </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/core.js"></script>
+<script>
+    const board = new GoBoard('game-canvas');
+    const engine = new GoEngine();
+    
+    // 状态
+    let moves = [];
+    let curStep = 0;
+    let mode = 'view';
+    let tryHist = [];
+    let meta = {};
+    let sgfStr = "";
+
+    // 声音
+    const sndMove = new Audio('assets/sound/move.wav');
+    const sndEat = new Audio('assets/sound/deadstoneless.wav');
+
+    window.onload = async () => {
+        const id = new URLSearchParams(window.location.search).get('id');
+        if(!id) return;
+        
+        const { data, error } = await sbClient.from('games').select('*').eq('id', id).single();
+        if(error) { alert('Load Error'); return; }
+
+        sgfStr = data.sgf_content;
+        const res = parseSGF(sgfStr);
+        moves = res.moves;
+        meta = res.meta;
+        
+        // 绑定数据到UI
+        document.getElementById('p-black').innerText = data.black_player;
+        document.getElementById('p-white').innerText = data.white_player;
+        document.getElementById('p-event').innerText = data.event_name;
+        document.getElementById('p-result').innerText = data.result;
+
+        updateBoard();
+
+        // 绑定棋盘点击
+        board.clickHandler = (x, y) => handleClick(x, y);
+    };
+
+    function handleClick(x, y) {
+        if(mode === 'view') return;
+
+        if(mode === 'guess') {
+            if(curStep >= moves.length) return showMsg("结束");
+            const next = moves[curStep];
+            if(next.x === x && next.y === y) {
+                showMsg("Correct!", true);
+                nav.next();
+            } else {
+                showMsg("Wrong!");
+            }
+        }
+        else if(mode === 'try') {
+            // 试下逻辑
+            let color = 1; // 默认黑
+            // 简单判断轮到谁：看tryHist最后，或者原谱最后
+            if(tryHist.length > 0) color = tryHist[tryHist.length-1].c === 1 ? 2 : 1;
+            else if(curStep > 0) color = moves[curStep-1].c === 1 ? 2 : 1;
+            
+            const res = engine.play(x, y, color);
+            if(res.success) {
+                tryHist.push({x, y, c: color});
+                playSound(res.capturedCount > 0);
+                board.draw(engine.board, {x, y});
+            }
+        }
+    }
+
+    // 导航控制
+    const nav = {
+        next: () => {
+            if(curStep < moves.length) {
+                const m = moves[curStep];
+                const res = engine.play(m.x, m.y, m.c);
+                curStep++;
+                playSound(res.capturedCount > 0);
+                updateUI();
+            }
+        },
+        prev: () => {
+            if(curStep > 0) {
+                curStep--;
+                syncEngine();
+                updateUI();
+            }
+        },
+        first: () => { curStep=0; syncEngine(); updateUI(); },
+        last: () => { curStep=moves.length; syncEngine(); updateUI(); }
+    };
+
+    function syncEngine() {
+        engine.reset();
+        for(let i=0; i<curStep; i++) engine.play(moves[i].x, moves[i].y, moves[i].c);
+    }
+
+    function updateBoard() {
+        let last = null;
+        if(curStep > 0) last = moves[curStep-1];
+        board.draw(engine.board, last);
+    }
+
+    function updateUI() {
+        document.getElementById('step-num').innerText = curStep;
+        updateBoard();
+        if(mode !== 'try') tryHist = [];
+    }
+
+    function setMode(m) {
+        mode = m;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('t-'+m).classList.add('active');
+        
+        const btns = document.getElementById('play-btns');
+        if(m === 'view') {
+            btns.style.opacity = 1; btns.style.pointerEvents = 'auto';
+            if(tryHist.length) { tryHist=[]; syncEngine(); updateBoard(); }
+        } else {
+            btns.style.opacity = 0.3; btns.style.pointerEvents = 'none';
+            showMsg(m === 'guess' ? "Guess Next Move" : "Try Mode");
+        }
+    }
+
+    function showMsg(txt, success) {
+        const el = document.getElementById('msg');
+        el.innerText = txt;
+        el.style.opacity = 1;
+        el.style.background = success ? "green" : "rgba(0,0,0,0.8)";
+        setTimeout(()=>el.style.opacity=0, 1000);
+    }
+
+    function playSound(isCap) {
+        const aud = isCap ? sndEat : sndMove;
+        aud.currentTime = 0;
+        aud.play().catch(e=>{});
+    }
+    
+    window.downloadSGF = function() {
+        const b = new Blob([sgfStr], {type:'application/x-go-sgf'});
+        const u = URL.createObjectURL(b);
+        const a = document.createElement('a');
+        a.href = u; a.download = `${meta.PB||'Black'}_vs_${meta.PW||'White'}.sgf`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
+</script>
+</body>
+</html>
