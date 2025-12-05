@@ -9,21 +9,16 @@
         :root { --primary: #2c3e50; --accent: #d4a017; --wood: #eebb76; --bg: #f4f6f8; --radius: 8px; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: #333; }
         .container { max-width: 800px; margin: 0 auto; padding: 15px; }
-        
         header { background: #fff; padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 99; }
         .logo { font-size: 1.2rem; font-weight: bold; text-decoration: none; color: #333; }
         .nav-btn { padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; }
-        .nav-btn:hover { background: #f0f0f0; }
-        
         .hero-card { background: #fff; border-radius: var(--radius); padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .game-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
         .board-wrapper { width: 100%; max-width: 600px; aspect-ratio: 1/1; margin: 0 auto; background: var(--wood); border-radius: 2px; }
         canvas { width: 100%; height: 100%; display: block; }
-        
         .search-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: var(--radius); }
         .inp { padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex: 1; }
         .btn-search { background: var(--accent); color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; }
-
         .list-section { background: #fff; border-radius: var(--radius); overflow: hidden; }
         .game-item { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         .game-item:hover { background: #f0f7ff; }
@@ -34,7 +29,6 @@
 
 <header>
     <a href="index.html" class="logo">⚫⚪ 爱围棋</a>
-    <!-- 动态显示登录状态 -->
     <div id="auth-box"></div>
 </header>
 
@@ -67,13 +61,12 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/core.js"></script>
 <script>
+    // 立即初始化棋盘
     const board = new GoBoard('main-board');
     const engine = new GoEngine();
 
     window.onload = async () => {
-        // 1. 渲染 Header
-        await renderHeaderAuth('auth-box');
-        // 2. 加载数据
+        renderHeaderAuth('auth-box');
         await loadData();
     };
 
@@ -90,7 +83,7 @@
 
         if (error || !data || data.length === 0) {
             list.innerHTML = '<div style="padding:20px;text-align:center">暂无数据</div>';
-            document.getElementById('h-event').innerText = "No Games Found";
+            document.getElementById('h-event').innerText = "No Games";
             return;
         }
 
@@ -99,7 +92,9 @@
         document.getElementById('h-white').innerText = top.white_player;
         document.getElementById('h-event').innerText = top.event_name;
         document.getElementById('h-result').innerText = top.result;
-        document.getElementById('enter-btn').href = `view.html?id=${top.id}`;
+        
+        // 链接更新为 Hash 格式
+        document.getElementById('enter-btn').href = `game/#${top.id}`;
         
         const parsed = parseSGF(top.sgf_content);
         engine.reset();
@@ -109,7 +104,7 @@
         list.innerHTML = data.slice(0, 10).map(g => `
             <div class="game-item">
                 <div>
-                    <a href="view.html?id=${g.id}" style="font-weight:bold; color:#333; text-decoration:none">${g.black_player} vs ${g.white_player}</a>
+                    <a href="game/#${g.id}" style="font-weight:bold; color:#333; text-decoration:none">${g.black_player} vs ${g.white_player}</a>
                     <div style="font-size:0.85rem; color:#888">📅 ${g.game_date} · ${g.event_name}</div>
                 </div>
                 <div class="${g.result && g.result.includes('+') ? 'win' : ''}">${g.result}</div>
