@@ -1,1 +1,13 @@
-
+/* --- 底部页脚 (Footer) --- */
+footer {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+    font-size: 0.85rem;
+    border-top: 1px solid #eee;
+    margin-top: 40px;
+    background: #fff; /* 确保背景是白色的 */
+}
+footer a { color: #666; text-decoration: none; margin: 0 5px; }
+footer a:hover { text-decoration: underline; color: #333; }
+footer .copyright { margin-bottom: 8px; font-family: sans-serif; }
