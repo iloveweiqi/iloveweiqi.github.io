@@ -399,14 +399,40 @@
 
     async function saveFavorite() {
         const { data: { user } } = await sbClient.auth.getUser();
-        const folderId = document.getElementById('fav-folder-select').value || null;
+        if (!user) return alert("请先登录");
+
+        // 1. 获取并处理 folderId (目录ID)
+        let folderId = document.getElementById('fav-folder-select').value;
+        // 关键修复：强制检查，如果是空字符串，必须转为 null
+        if (!folderId || folderId.trim() === "") {
+            folderId = null;
+        }
+
+        // 2. 获取并处理 game_id (棋谱ID)
+        let gameId = window.location.hash.substring(1);
+        // 关键修复：防止 gameId 为空字符串导致报错
+        if (!gameId || gameId.trim() === "") {
+            return alert("错误：无法获取当前棋谱ID，请刷新页面重试。");
+        }
+
         const title = document.getElementById('fav-title').value;
-        const id = window.location.hash.substring(1); 
+
+        // 3. 提交数据
         const { error } = await sbClient.from('favorites').insert({
-            user_id: user.id, game_id: id, parent_id: folderId, title: title, is_folder: false
+            user_id: user.id,
+            game_id: gameId,    // 这里确保是 UUID 字符串
+            parent_id: folderId, // 这里确保是 UUID 字符串 或 null
+            title: title,
+            is_folder: false
         });
-        if (error) alert("收藏失败: " + error.message);
-        else { alert("收藏成功！"); document.getElementById('fav-modal').style.display = 'none'; }
+
+        if (error) {
+            console.error(error); // 在控制台打印详细错误
+            alert("收藏失败: " + error.message);
+        } else {
+            alert("✅ 收藏成功！");
+            document.getElementById('fav-modal').style.display = 'none';
+        }
     }
 </script>
 </body>
