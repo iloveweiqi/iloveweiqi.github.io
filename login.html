@@ -32,24 +32,23 @@
         const msg = document.getElementById('msg');
         msg.innerText = "Processing...";
         
-        // 尝试登录
+        // 1. 尝试登录
         let { data, error } = await sbClient.auth.signInWithPassword({ email, password });
         
         if (error) {
-            // 如果登录失败，尝试注册
+            // 2. 登录失败，尝试注册
             const { data: regData, error: regError } = await sbClient.auth.signUp({ email, password });
             if (regError) {
+                // 如果已存在且密码错，会报 Invalid login credentials，如果注册重复，也会有相应提示
+                msg.style.color = "red";
                 msg.innerText = "Error: " + regError.message;
             } else {
                 msg.style.color = "green";
-                msg.innerText = "注册成功！请去邮箱验证，然后登录。";
+                msg.innerText = "注册成功！请前往邮箱点击验证链接，然后重新登录。";
             }
         } else {
-            // 登录成功
-            // 检查是否管理员
-            const {data: profile} = await sbClient.from('profiles').select('*').eq('id', data.user.id).single();
-            if(profile && profile.is_admin) location.href = "admin.html";
-            else location.href = "index.html";
+            // 登录成功 -> 首页
+            location.href = "index.html";
         }
     }
 </script>
