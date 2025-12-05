@@ -115,7 +115,6 @@
         if(!data) { alert('Err'); return; }
 
         sgfStr = data.sgf_content;
-        // 使用更新后的 core.js 解析器
         const res = parseSGF(sgfStr);
         moves = res.moves; meta = res.meta;
         
@@ -125,7 +124,12 @@
         document.getElementById('p-result').innerText = data.result;
         document.title = `${data.black_player} vs ${data.white_player}`;
 
-        updateUI();
+        // --- 修改点开始：默认跳到最后一步 ---
+        curStep = moves.length; // 设置为最大手数
+        syncEngine();           // 计算盘面到最后
+        updateUI();             // 更新界面
+        // --- 修改点结束 ---
+
         board.clickHandler = (x, y) => handleClick(x, y);
         loadList();
     };
