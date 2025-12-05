@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>爱围棋 | iWeiQi</title>
-    <!-- CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --primary: #2c3e50; --accent: #d4a017; --wood: #eebb76; --bg: #f4f6f8; --radius: 8px; }
@@ -13,7 +12,8 @@
         
         header { background: #fff; padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 99; }
         .logo { font-size: 1.2rem; font-weight: bold; text-decoration: none; color: #333; }
-        .nav-btn { padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; margin-left:5px;}
+        .nav-btn { padding: 6px 12px; border: 1px solid #ddd; background: #fff; border-radius: 4px; cursor: pointer; }
+        .nav-btn:hover { background: #f0f0f0; }
         
         .hero-card { background: #fff; border-radius: var(--radius); padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .game-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
@@ -25,7 +25,6 @@
         .btn-search { background: var(--accent); color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; }
 
         .list-section { background: #fff; border-radius: var(--radius); overflow: hidden; }
-        .list-header { padding: 15px; background: #f9f9f9; border-bottom: 1px solid #eee; font-weight: bold; display: flex; justify-content: space-between; }
         .game-item { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         .game-item:hover { background: #f0f7ff; }
         .win { color: #e74c3c; font-weight: bold; }
@@ -35,32 +34,23 @@
 
 <header>
     <a href="index.html" class="logo">⚫⚪ 爱围棋</a>
-    <div>
-        <button class="nav-btn" onclick="location.href='login.html'">登录 / 注册</button>
-    </div>
+    <!-- 动态显示登录状态 -->
+    <div id="auth-box"></div>
 </header>
 
 <div class="container">
-    <!-- Hero Game -->
-    <div style="margin-bottom:5px; font-weight:bold; color:#555; display:flex; justify-content:space-between;">
-        <span>🔥 本日推荐 (Latest)</span>
-    </div>
+    <div style="margin-bottom:5px; font-weight:bold; color:#555;">🔥 本日推荐</div>
     <div class="hero-card">
         <div class="game-header">
             <div><span id="h-black">--</span> (B) vs <span id="h-white">--</span> (W)</div>
             <div style="font-size:0.9rem; color:#666"><span id="h-event">Loading...</span> · <span id="h-result"></span></div>
         </div>
-        <div class="board-wrapper">
-            <canvas id="main-board"></canvas>
-        </div>
+        <div class="board-wrapper"><canvas id="main-board"></canvas></div>
         <div style="text-align: center; margin-top: 15px;">
-            <a id="enter-btn" href="#">
-                <button class="btn-search" style="background:var(--primary)">进入详情 / 猜局</button>
-            </a>
+            <a id="enter-btn" href="#"><button class="btn-search" style="background:var(--primary)">进入详情 / 猜局</button></a>
         </div>
     </div>
 
-    <!-- Search -->
     <div class="search-bar">
         <input type="text" class="inp" id="k-word" placeholder="棋手 / 赛事...">
         <input type="date" class="inp" id="k-start">
@@ -68,12 +58,8 @@
         <button class="btn-search" onclick="doSearch()">搜索</button>
     </div>
 
-    <!-- List -->
     <div class="list-section">
-        <div class="list-header">
-            <span>📚 最新录入 (Top 10)</span>
-            <small>按比赛日期</small>
-        </div>
+        <div style="padding:15px; background:#f9f9f9; border-bottom:1px solid #eee; font-weight:bold;">📚 最新录入 (Top 10)</div>
         <div id="game-list">Loading...</div>
     </div>
 </div>
@@ -85,6 +71,9 @@
     const engine = new GoEngine();
 
     window.onload = async () => {
+        // 1. 渲染 Header
+        await renderHeaderAuth('auth-box');
+        // 2. 加载数据
         await loadData();
     };
 
@@ -93,7 +82,6 @@
         list.innerHTML = '<div style="padding:20px;text-align:center">Loading...</div>';
 
         let q = sbClient.from('games').select('*').order('game_date', {ascending: false}).limit(20);
-        
         if (filters.word) q = q.or(`black_player.ilike.%${filters.word}%,white_player.ilike.%${filters.word}%,event_name.ilike.%${filters.word}%`);
         if (filters.start) q = q.gte('game_date', filters.start);
         if (filters.end) q = q.lte('game_date', filters.end);
@@ -101,12 +89,11 @@
         const { data, error } = await q;
 
         if (error || !data || data.length === 0) {
-            list.innerHTML = '<div style="padding:20px;text-align:center">暂无数据 (请先在后台上传)</div>';
-            document.getElementById('h-event').innerText = "No Games";
+            list.innerHTML = '<div style="padding:20px;text-align:center">暂无数据</div>';
+            document.getElementById('h-event').innerText = "No Games Found";
             return;
         }
 
-        // 渲染 Hero
         const top = data[0];
         document.getElementById('h-black').innerText = top.black_player;
         document.getElementById('h-white').innerText = top.white_player;
@@ -116,17 +103,13 @@
         
         const parsed = parseSGF(top.sgf_content);
         engine.reset();
-        // 自动走到最后
         parsed.moves.forEach(m => engine.play(m.x, m.y, m.c));
         board.draw(engine.board, parsed.moves[parsed.moves.length-1]);
 
-        // 渲染列表
         list.innerHTML = data.slice(0, 10).map(g => `
             <div class="game-item">
                 <div>
-                    <a href="view.html?id=${g.id}" style="font-weight:bold; color:#333; text-decoration:none">
-                        ${g.black_player} vs ${g.white_player}
-                    </a>
+                    <a href="view.html?id=${g.id}" style="font-weight:bold; color:#333; text-decoration:none">${g.black_player} vs ${g.white_player}</a>
                     <div style="font-size:0.85rem; color:#888">📅 ${g.game_date} · ${g.event_name}</div>
                 </div>
                 <div class="${g.result && g.result.includes('+') ? 'win' : ''}">${g.result}</div>
