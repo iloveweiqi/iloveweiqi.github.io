@@ -1,4 +1,4 @@
-/** 1. 规则引擎 */
+/** 1. 规则引擎 (保持不变) */
 class GoEngine {
     constructor() { this.reset(); }
     reset() { this.board = Array(19).fill(0).map(() => Array(19).fill(0)); }
@@ -12,7 +12,7 @@ class GoEngine {
             const curr = queue.pop(); stones.push(curr);
             [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx, dy]) => {
                 const nx = curr.x + dx, ny = curr.y + dy;
-                if (nx<0 || nx>=19 || ny<0 || ny>=19) return;
+                if (nx < 0 || nx >= 19 || ny < 0 || ny >= 19) return;
                 const nc = board[ny][nx];
                 if (nc === 0) liberties.add(`${nx},${ny}`);
                 else if (nc === color && !visited.has(`${nx},${ny}`)) {
@@ -49,60 +49,47 @@ class GoEngine {
     }
 }
 
-/** 2. Canvas 渲染 (优化版) */
+/** 2. Canvas 渲染 (保持不变) */
 class GoBoard {
     constructor(id) {
         this.canvas = document.getElementById(id);
         if(!this.canvas) return;
         this.ctx = this.canvas.getContext('2d');
         this.size = 19;
-        
-        // 初始绘制空网格，不等待resizeObserver
         this.resize();
-
         this.resizeObserver = new ResizeObserver(() => this.resize());
         this.resizeObserver.observe(this.canvas.parentElement);
         this.canvas.addEventListener('click', e => this.onClick(e));
     }
-
     resize() {
         if(!this.canvas.parentElement) return;
         const p = this.canvas.parentElement.getBoundingClientRect();
-        if(p.width === 0) return; // 避免不可见时报错
-
+        if(p.width===0) return;
         const d = window.devicePixelRatio || 1;
-        this.canvas.width = p.width * d; 
-        this.canvas.height = p.height * d;
+        this.canvas.width = p.width * d; this.canvas.height = p.height * d;
         this.ctx.scale(d, d);
         this.width = p.width; 
         this.padding = this.width / 22;
         this.cell = (this.width - 2*this.padding)/(this.size-1);
-        
-        // 如果有数据则画全图，没数据先画网格
         if(this.lastState) this.draw(this.lastState.board, this.lastState.lastMove);
-        else this.drawGrid(); 
+        else this.drawGrid();
     }
-
     drawGrid() {
         const {ctx, width: w, padding: p, cell: c, size} = this;
         ctx.clearRect(0,0,w,w);
-        // 背景色在CSS里设置，Canvas只画线
         ctx.lineWidth=1; ctx.strokeStyle="#000"; ctx.beginPath();
         for(let i=0;i<size;i++){
             ctx.moveTo(p+i*c, p); ctx.lineTo(p+i*c, w-p);
             ctx.moveTo(p, p+i*c); ctx.lineTo(w-p, p+i*c);
         }
         ctx.stroke();
-        // 星位
         [3,9,15].forEach(x=>[3,9,15].forEach(y=>{
             ctx.beginPath(); ctx.arc(p+x*c, p+y*c, 2.5, 0, Math.PI*2); ctx.fillStyle="#000"; ctx.fill();
         }));
     }
-
     draw(board, lastMove) {
         this.lastState = {board, lastMove};
-        this.drawGrid(); // 先画网格
-
+        this.drawGrid();
         const {ctx, padding: p, cell: c, size} = this;
         for(let y=0;y<size;y++) for(let x=0;x<size;x++) {
             if(board[y][x]) this.drawStone(x,y,board[y][x]);
@@ -111,7 +98,6 @@ class GoBoard {
             ctx.fillStyle="red"; ctx.fillRect(p+lastMove.x*c-3, p+lastMove.y*c-3, 6, 6);
         }
     }
-
     drawStone(x,y,color) {
         const {ctx, padding: p, cell: c} = this;
         const cx=p+x*c, cy=p+y*c, r=c*0.48;
@@ -122,7 +108,6 @@ class GoBoard {
         ctx.fillStyle=g; ctx.fill();
         if(color===2){ ctx.strokeStyle="#ccc"; ctx.stroke(); }
     }
-
     onClick(e) {
         if(!this.clickHandler) return;
         const r = this.canvas.getBoundingClientRect();
@@ -132,13 +117,52 @@ class GoBoard {
     }
 }
 
+/** 3. SGF 解析器 (增强版：支持解说) */
 function parseSGF(sgf) {
-    let moves=[], meta={};
-    sgf.replace(/([A-Z]{2})\[(.*?)\]/g, (m,k,v)=>{ if(!moves.length) meta[k]=v; });
-    const reg = /;([BW])\[([a-s]{2})\]/g; let m; const map="abcdefghijklmnopqrs";
-    while(m=reg.exec(sgf)) {
-        const x=map.indexOf(m[2][0]), y=map.indexOf(m[2][1]);
-        if(x>=0&&y>=0) moves.push({x,y,c:m[1]==='B'?1:2});
-    }
-    return {meta, moves};
+    let moves = [];
+    let meta = {};
+    const map = "abcdefghijklmnopqrs";
+
+    // 1. 提取头部元数据 (简单提取)
+    sgf.replace(/([A-Z]{2})\[(.*?)\]/g, (m, k, v) => {
+        // 如果还没有 moves，说明是头部信息
+        if (moves.length === 0) meta[k] = v;
+    });
+
+    // 2. 节点分割 (更严谨的解析)
+    // 移除头部多余内容，从第一个分号开始处理
+    const bodyIndex = sgf.indexOf(';');
+    if (bodyIndex === -1) return { meta, moves: [] };
+
+    const body = sgf.substring(bodyIndex);
+    const nodes = body.split(';');
+
+    nodes.forEach(node => {
+        if (!node.trim()) return;
+
+        // 提取黑/白招法
+        let color = 0, x = -1, y = -1;
+        const moveMatch = node.match(/([BW])\[([a-s]{2})\]/);
+        if (moveMatch) {
+            color = moveMatch[1] === 'B' ? 1 : 2;
+            x = map.indexOf(moveMatch[2][0]);
+            y = map.indexOf(moveMatch[2][1]);
+        }
+
+        // 提取解说 (C[...])
+        // 注意：C[] 里面可能包含换行符，正则需匹配所有字符
+        const commentMatch = node.match(/C\[([\s\S]*?)\]/);
+        let comment = commentMatch ? commentMatch[1] : "";
+        // 处理转义字符 (SGF中 \] 是 ])
+        comment = comment.replace(/\\\]/g, ']');
+
+        if (color !== 0 && x >= 0 && y >= 0) {
+            moves.push({ x, y, c: color, comment: comment });
+        } else if (comment && moves.length > 0) {
+            // 如果节点没有落子但有解说，追加到上一步 (简化处理)
+            moves[moves.length - 1].comment += "\n" + comment;
+        }
+    });
+
+    return { meta, moves };
 }
