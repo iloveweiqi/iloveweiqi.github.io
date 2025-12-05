@@ -7,17 +7,17 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --primary: #2c3e50; --accent: #d4a017; --wood: #eebb76; --bg: #f4f6f8; }
-        * { box-sizing: border-box; } /* 关键：防止padding撑大元素 */
+        * { box-sizing: border-box; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: #333; padding-bottom: 20px; }
         
-        /* 顶部 Header */
+        /* Header */
         header { background: #fff; height: 50px; display: flex; align-items: center; padding: 0 15px; border-bottom:1px solid #eee; position:sticky; top:0; z-index:99; }
         .back { text-decoration: none; color: #555; font-size: 0.9rem; }
         
-        /* === 布局容器 === */
-        .main-stage { 
+        /* === 布局容器 (上下统一宽度) === */
+        .main-stage, .bottom-section { 
             width: 100%; 
-            max-width: 1200px; 
+            max-width: 1200px; /* 统一宽度，确保左对齐 */
             margin: 0 auto; 
             padding: 10px; 
         }
@@ -25,53 +25,44 @@
         .game-wrapper {
             display: flex;
             gap: 15px;
-            /* 默认电脑端：水平排列 */
             flex-direction: row; 
             align-items: flex-start;
-            justify-content: center;
+            /* 电脑端左对齐，如果想居中对齐请改为 center */
+            justify-content: flex-start; 
         }
 
-        /* === 1. 棋盘盒子 (CSS 修复核心) === */
+        /* 1. 棋盘盒子 */
         .board-col {
-            flex: 0 0 auto; /* 不允许缩放，大小由 height/width 决定 */
+            flex: 0 0 auto; 
             position: relative;
             background: var(--wood);
             border-radius: 4px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            /* 强制保持正方形 */
             aspect-ratio: 1 / 1; 
         }
         canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
 
-        /* === 2. 控制按钮区 === */
+        /* 2. 控制按钮区 */
         .controls-col {
-            flex: 0 0 50px; /* 固定宽度 */
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            flex: 0 0 50px;
+            display: flex; flex-direction: column; gap: 8px;
         }
         .btn-nav {
-            width: 100%;
-            padding: 10px 0;
-            background: #fff; border: 1px solid #ccc; border-radius: 6px;
+            width: 100%; padding: 10px 0; background: #fff; border: 1px solid #ccc; border-radius: 6px;
             font-size: 1.1rem; cursor: pointer; text-align: center; color:#333;
             display: flex; align-items: center; justify-content: center;
         }
         .btn-nav:hover { background: #eee; }
         .btn-nav:active { background: #ddd; transform: scale(0.95); }
 
-        /* === 3. 信息与解说 === */
+        /* 3. 信息与解说 */
         .info-col {
-            flex: 1; /* 占据剩余空间 */
-            min-width: 0; /* 防止被内容撑爆 */
-            display: flex; flex-direction: column; gap: 10px;
-            max-width: 400px;
+            flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; max-width: 400px;
         }
         .meta-card { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #eee; }
         .comment-box { 
             background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 15px; 
-            height: 300px; /* 固定高度，内部滚动 */
-            overflow-y: auto; font-size: 0.95rem; line-height: 1.6; color: #2c3e50; 
+            height: 300px; overflow-y: auto; font-size: 0.95rem; line-height: 1.6; color: #2c3e50; 
         }
 
         /* Tab 切换 */
@@ -82,64 +73,34 @@
         .overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.7); color: #fff; padding: 10px 20px; border-radius: 20px; opacity: 0; pointer-events: none; transition: 0.3s; font-weight: bold; white-space: nowrap; z-index: 10; }
         .switch-label { display: flex; align-items: center; justify-content: center; font-size: 0.75rem; cursor: pointer; color: #555; margin-top:5px; white-space: nowrap; }
 
-        /* === 响应式适配 (修复关键) === */
-
-        /* 电脑端 (宽度 > 768px) */
+        /* === 响应式适配 === */
         @media (min-width: 769px) {
             .board-col {
-                /* 高度限制为视口高度的 80%，同时宽度不能超过 650px */
-                height: 80vh;
-                max-height: 650px;
-                /* 宽度自动设为 auto，由 aspect-ratio: 1/1 自动推算，保证不拉伸 */
-                width: auto; 
+                height: 80vh; max-height: 650px; width: auto; 
             }
+            .bottom-section { margin-top: 20px; }
         }
 
-        /* 手机端/窄屏 (宽度 <= 768px) */
         @media (max-width: 768px) {
-            .main-stage { padding: 0; } /* 手机端贴边 */
-            
-            .game-wrapper {
-                flex-direction: column; /* 垂直排列 */
-                gap: 0;
-            }
-
-            /* 棋盘：宽度 100%，高度自动 */
-            .board-col {
-                width: 100%;
-                height: auto; 
-                border-radius: 0; /* 手机端不需要圆角 */
-            }
-
-            /* 按钮区：横向排列 */
+            .main-stage { padding: 0; }
+            .game-wrapper { flex-direction: column; gap: 0; }
+            .board-col { width: 100%; height: auto; border-radius: 0; }
             .controls-col {
-                flex-direction: row;
-                width: 100%;
-                flex: 0 0 auto;
-                padding: 10px;
-                background: #fff;
-                border-bottom: 1px solid #eee;
-                justify-content: space-between;
+                flex-direction: row; width: 100%; flex: 0 0 auto; padding: 10px;
+                background: #fff; border-bottom: 1px solid #eee; justify-content: space-between;
             }
             .btn-nav { flex: 1; margin: 0 2px; padding: 12px 0; font-size: 1.2rem; }
             .switch-label { margin-top: 0; margin-left: 5px; flex-direction: column; font-size: 0.7rem;}
-
-            /* 信息区 */
-            .info-col {
-                width: 100%;
-                max-width: none;
-                padding: 10px;
-            }
-            .comment-box { height: 200px; } /* 手机端解说框稍微矮一点 */
+            .info-col { width: 100%; max-width: none; padding: 10px; }
+            .comment-box { height: 200px; }
         }
 
         /* 列表部分 */
-        .bottom-section { max-width: 800px; margin: 20px auto; padding: 15px; }
         .list-box { background: #fff; border-radius: 8px; border:1px solid #eee; }
         .game-item { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
         .search-bar { display: flex; gap: 10px; margin-bottom: 15px; }
         .inp { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        .btn-search { padding: 8px 15px; background: var(--accent); color: #fff; border: none; border-radius: 4px; }
+        .btn-search { padding: 8px 15px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -159,15 +120,15 @@
 
         <!-- 2. 按钮 -->
         <div class="controls-col">
-            <button class="btn-nav" onclick="nav.first()">|‹</button>
-            <button class="btn-nav" onclick="nav.prev10()">‹‹</button>
-            <button class="btn-nav" onclick="nav.prev()">‹</button>
-            <button class="btn-nav" onclick="nav.next()">›</button>
-            <button class="btn-nav" onclick="nav.next10()">››</button>
-            <button class="btn-nav" onclick="nav.last()">›|</button>
+            <button class="btn-nav" onclick="nav.first()" title="第一手">|‹</button>
+            <button class="btn-nav" onclick="nav.prev10()" title="快退">‹‹</button>
+            <button class="btn-nav" onclick="nav.prev()" title="上一手">‹</button>
+            <button class="btn-nav" onclick="nav.next()" title="下一手">›</button>
+            <button class="btn-nav" onclick="nav.next10()" title="快进">››</button>
+            <button class="btn-nav" onclick="nav.last()" title="最新">›|</button>
             <label class="switch-label">
                 <input type="checkbox" id="chk-num" onchange="toggleNumbers()">
-                <span>手数</span>
+                <span data-i18n="step_label">手数</span>
             </label>
         </div>
 
@@ -175,9 +136,9 @@
         <div class="info-col">
             <div class="meta-card">
                 <div class="mode-tabs">
-                    <div class="mode-btn active" onclick="setMode('view')" id="t-view">浏览</div>
-                    <div class="mode-btn" onclick="setMode('guess')" id="t-guess">猜局</div>
-                    <div class="mode-btn" onclick="setMode('try')" id="t-try">试下</div>
+                    <div class="mode-btn active" onclick="setMode('view')" id="t-view" data-i18n="view_mode">浏览</div>
+                    <div class="mode-btn" onclick="setMode('guess')" id="t-guess" data-i18n="guess_mode">猜局</div>
+                    <div class="mode-btn" onclick="setMode('try')" id="t-try" data-i18n="try_mode">试下</div>
                 </div>
                 <div style="font-weight:bold; font-size:1.1rem; margin-bottom:5px;">
                     <span id="p-black">--</span> vs <span id="p-white">--</span>
@@ -185,26 +146,27 @@
                 <div style="color:#666; font-size:0.85rem;">
                     <span id="p-event">--</span> · <span id="p-result">--</span> · <span id="p-date"></span>
                 </div>
+                <!-- 修复重点：使用 javascript:void(0) 防止跳转导致 Hash 丢失 -->
                 <div style="margin-top:10px; display:flex; gap:15px; font-size:0.85rem;">
-                    <a href="#" onclick="downloadSGF()" style="color:#666;text-decoration:underline;">📥 下载 SGF</a>
-                    <a href="#" onclick="openFavModal()" style="color:var(--accent);text-decoration:none; font-weight:bold;">⭐ 加入收藏</a>
+                    <a href="javascript:void(0)" onclick="downloadSGF()" style="color:#666;text-decoration:underline;" data-i18n="download_sgf">📥 下载 SGF</a>
+                    <a href="javascript:void(0)" onclick="openFavModal()" style="color:var(--accent);text-decoration:none; font-weight:bold;" data-i18n="add_fav">⭐ 加入收藏</a>
                 </div>
             </div>
-            <div class="comment-box" id="comment-content"><span style="color:#999">暂无解说...</span></div>
+            <div class="comment-box" id="comment-content"><span style="color:#999" data-i18n="comment_none">暂无解说...</span></div>
         </div>
     </div>
 </div>
 
 <div class="bottom-section">
-    <h3 style="border-bottom:2px solid var(--primary); padding-bottom:10px; color:#333;">📚 更多棋谱</h3>
+    <h3 style="border-bottom:2px solid var(--primary); padding-bottom:10px; color:#333;" data-i18n="latest_title">📚 更多棋谱</h3>
     <div class="search-bar">
-        <input type="text" class="inp" id="k-word" placeholder="搜索: 柯洁, LG杯...">
-        <button class="btn-search" onclick="doSearch()">搜索</button>
+        <input type="text" class="inp" id="k-word" data-i18n="search_placeholder" placeholder="搜索: 柯洁, LG杯...">
+        <button class="btn-search" onclick="doSearch()" data-i18n="search_btn">搜索</button>
     </div>
-    <div class="list-box" id="game-list">Loading...</div>
+    <div class="list-box" id="game-list"><div style="padding:20px;text-align:center">Loading...</div></div>
 </div>
 
-<!-- 收藏弹窗 (保持不变) -->
+<!-- 收藏弹窗 -->
 <div id="fav-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999; justify-content:center; align-items:center;">
     <div style="background:#fff; padding:20px; border-radius:8px; width:300px; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
         <h3 style="margin-top:0;">添加到收藏夹</h3>
@@ -254,7 +216,6 @@
         document.getElementById('p-date').innerText = data.game_date;
         document.title = `${data.black_player} vs ${data.white_player} - ${data.result} - ${data.event_name}`;
 
-        // 默认显示终局
         curStep = moves.length;
         syncEngine();
         updateUI();
@@ -275,7 +236,7 @@
     function handleClick(x, y) {
         if(mode==='view') return;
         if(mode==='guess') {
-            if(curStep>=moves.length) return showMsg("结束");
+            if(curStep>=moves.length) return showMsg(t('game_over')||"结束");
             const n = moves[curStep];
             if(n.x===x && n.y===y) { showMsg("Correct!",1); nav.next(); } else showMsg("Wrong!");
         } else if(mode==='try') {
@@ -308,13 +269,13 @@
     function renderComment() {
         const box = document.getElementById('comment-content');
         let txt = "";
-        if (mode === 'try') txt = `【试下模式】\n变化手数: ${tryHist.length}`;
+        if (mode === 'try') txt = `【${t('try_mode')}】\nSteps: ${tryHist.length}`;
         else if (curStep > 0) {
             const m = moves[curStep-1];
             txt = m.comment || ""; 
-            if(!txt) txt = `<span style="color:#ccc">第 ${curStep} 手 (无解说)</span>`;
+            if(!txt) txt = `<span style="color:#ccc">${t('step_label')||'Step'} ${curStep}</span>`;
         } else {
-            txt = meta.GC || meta.C || "【开局】";
+            txt = meta.GC || meta.C || "Start";
         }
         box.innerHTML = txt.replace(/\n/g, "<br>");
     }
@@ -324,13 +285,13 @@
     function setMode(m) {
         mode = m; document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active')); document.getElementById('t-'+m).classList.add('active');
         if(m==='view' && tryHist.length) { tryHist=[]; syncEngine(); updateBoard(); }
-        showMsg(m==='guess'?"猜局模式":(m==='try'?"试下模式":"浏览模式"));
+        showMsg(t(m+'_mode') || m);
         renderComment();
     }
     function showMsg(t,s) { const e=document.getElementById('msg'); e.innerText=t; e.style.opacity=1; e.style.background=s?"#27ae60":"rgba(0,0,0,0.8)"; setTimeout(()=>e.style.opacity=0,1000); }
     function playSound() { sndMove.currentTime=0; sndMove.play().catch(()=>{}); }
     
-    // 下载 SGF
+    // 下载
     window.downloadSGF = function() {
         if(!gameData) return;
         const b = new Blob([sgfStr],{type:'application/x-go-sgf'});
@@ -341,48 +302,26 @@
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
     
-    // 列表与搜索
-    async function loadList(keyword = '') {
-        const list = document.getElementById('game-list');
-        list.innerHTML = '<div style="padding:20px;text-align:center">Loading...</div>';
-        
-        let q = sbClient.from('games').select('id, black_player, white_player, event_name, game_date, result').order('game_date', {ascending: false}).limit(10);
-        
-        if (keyword) {
-            q = q.or(`black_player.ilike.%${keyword}%,white_player.ilike.%${keyword}%,event_name.ilike.%${keyword}%`);
-        }
-
-        const { data, error } = await q;
-
-        if (error || !data || data.length === 0) {
-            list.innerHTML = '<div style="padding:20px;text-align:center">暂无相关棋谱</div>';
-            return;
-        }
-
-        list.innerHTML = data.map(g => `
-            <div class="game-item">
-                <div>
-                    <!-- 点击后刷新当前页 -->
-                    <a href="javascript:switchGame('${g.id}')" style="font-weight:bold; color:#333; text-decoration:none">
-                        ${g.black_player} vs ${g.white_player}
-                    </a>
-                    <div style="font-size:0.85rem; color:#888">📅 ${g.game_date} · ${g.event_name}</div>
-                </div>
-                <div class="${g.result && g.result.includes('+') ? 'win' : ''}">${g.result}</div>
-            </div>
-        `).join('');
+    async function loadList() {
+        const l = document.getElementById('game-list');
+        const { data } = await sbClient.from('games').select('id,black_player,white_player,result,game_date,event_name').order('game_date',{ascending:false}).limit(10);
+        if(!data) return;
+        l.innerHTML = data.map(g => `<div class="game-item" onclick="window.location.hash='${g.id}';window.location.reload()"><div style="font-weight:bold">${g.black_player} vs ${g.white_player}</div><div>${g.result}</div></div>`).join('');
     }
 
     function doSearch() {
-        loadList(document.getElementById('k-word').value);
+        const k = document.getElementById('k-word').value;
+        const l = document.getElementById('game-list');
+        l.innerHTML = 'Loading...';
+        let q = sbClient.from('games').select('id,black_player,white_player,result,game_date,event_name').order('game_date',{ascending:false}).limit(10);
+        if(k) q = q.or(`black_player.ilike.%${k}%,white_player.ilike.%${k}%,event_name.ilike.%${k}%`);
+        q.then(({data})=>{
+            if(!data||!data.length) l.innerHTML='No Data';
+            else l.innerHTML = data.map(g => `<div class="game-item" onclick="window.location.hash='${g.id}';window.location.reload()"><div style="font-weight:bold">${g.black_player} vs ${g.white_player}</div><div>${g.result}</div></div>`).join('');
+        });
     }
 
-    window.switchGame = function(id) {
-        window.location.hash = id;
-        window.location.reload(); 
-    }
-
-    // 收藏弹窗相关 (同前)
+    // 收藏 (已修复 href)
     async function openFavModal() {
         const { data: { user } } = await sbClient.auth.getUser();
         if (!user) {
@@ -401,38 +340,20 @@
         const { data: { user } } = await sbClient.auth.getUser();
         if (!user) return alert("请先登录");
 
-        // 1. 获取并处理 folderId (目录ID)
         let folderId = document.getElementById('fav-folder-select').value;
-        // 关键修复：强制检查，如果是空字符串，必须转为 null
-        if (!folderId || folderId.trim() === "") {
-            folderId = null;
-        }
+        if (!folderId || folderId.trim() === "") folderId = null;
 
-        // 2. 获取并处理 game_id (棋谱ID)
         let gameId = window.location.hash.substring(1);
-        // 关键修复：防止 gameId 为空字符串导致报错
-        if (!gameId || gameId.trim() === "") {
-            return alert("错误：无法获取当前棋谱ID，请刷新页面重试。");
-        }
+        if (!gameId || gameId.trim() === "") return alert("ID错误");
 
         const title = document.getElementById('fav-title').value;
 
-        // 3. 提交数据
         const { error } = await sbClient.from('favorites').insert({
-            user_id: user.id,
-            game_id: gameId,    // 这里确保是 UUID 字符串
-            parent_id: folderId, // 这里确保是 UUID 字符串 或 null
-            title: title,
-            is_folder: false
+            user_id: user.id, game_id: gameId, parent_id: folderId, title: title, is_folder: false
         });
 
-        if (error) {
-            console.error(error); // 在控制台打印详细错误
-            alert("收藏失败: " + error.message);
-        } else {
-            alert("✅ 收藏成功！");
-            document.getElementById('fav-modal').style.display = 'none';
-        }
+        if (error) { console.error(error); alert("收藏失败: " + error.message); }
+        else { alert("收藏成功！"); document.getElementById('fav-modal').style.display = 'none'; }
     }
 </script>
 </body>
