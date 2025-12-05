@@ -8,41 +8,76 @@
     <style>
         :root { --primary: #2c3e50; --accent: #d4a017; --wood: #eebb76; --bg: #f4f6f8; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: #333; }
+        
+        /* Header */
         header { background: #fff; height: 50px; display: flex; align-items: center; padding: 0 15px; border-bottom:1px solid #eee; position:sticky; top:0; z-index:99; }
         .back { text-decoration: none; color: #555; font-size: 0.9rem; }
         
+        /* 布局容器 */
         .main-stage { max-width: 1200px; margin: 0 auto; padding: 10px; display: flex; flex-direction: column; gap: 15px; }
-        .game-wrapper { display: flex; gap: 15px; flex-direction: row; align-items: flex-start; }
+        .game-wrapper { display: flex; gap: 15px; flex-direction: row; align-items: flex-start; justify-content: center; }
         
-        .board-col { flex: 0 0 auto; position: relative; background: var(--wood); border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        /* === 1. 棋盘盒子 (CSS 调整重点) === */
+        .board-col { 
+            flex: 0 0 auto; 
+            position: relative; 
+            background: var(--wood); 
+            border-radius: 4px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+        }
         canvas { display: block; cursor: pointer; }
-        .controls-col { flex: 0 0 60px; display: flex; flex-direction: column; gap: 8px; }
-        .info-col { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 200px; }
 
-        .btn-nav { padding: 12px 0; background: #fff; border: 1px solid #ccc; border-radius: 6px; font-size: 1.2rem; cursor: pointer; text-align: center; }
+        /* === 2. 控制按钮区 === */
+        .controls-col { 
+            flex: 0 0 50px; /* 稍微变窄 */
+            display: flex; flex-direction: column; gap: 6px; 
+        }
+        .btn-nav { 
+            padding: 10px 0; background: #fff; border: 1px solid #ccc; border-radius: 6px; 
+            font-size: 1.1rem; cursor: pointer; text-align: center; color:#333;
+        }
         .btn-nav:hover { background: #eee; }
         .btn-nav:active { background: #ddd; transform: scale(0.98); }
 
+        /* === 3. 信息区 === */
+        .info-col { 
+            flex: 1; display: flex; flex-direction: column; gap: 10px; 
+            min-width: 200px; max-width: 400px; /* 限制解说区过宽 */
+        }
         .comment-box { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 15px; min-height: 150px; max-height: 400px; overflow-y: auto; font-size: 0.95rem; line-height: 1.6; color: #2c3e50; }
         .meta-card { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #eee; }
         
         /* Tab 切换 */
         .mode-tabs { display: flex; gap: 5px; margin-bottom: 10px; }
-        .mode-btn { flex: 1; padding: 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; text-align: center; border-radius: 4px; font-size: 0.9rem;}
+        .mode-btn { flex: 1; padding: 6px; border: 1px solid #ddd; background: #fff; cursor: pointer; text-align: center; border-radius: 4px; font-size: 0.85rem;}
         .mode-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
         .overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.7); color: #fff; padding: 10px 20px; border-radius: 20px; opacity: 0; pointer-events: none; transition: 0.3s; font-weight: bold; }
-        .switch-label { display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; color: #555; }
+        .switch-label { display: flex; align-items: center; justify-content: center; font-size: 0.75rem; cursor: pointer; color: #555; margin-top:5px; }
 
+        /* === 响应式调整 === */
+        
+        /* 手机端 (小于 768px) */
         @media (max-width: 768px) {
-            .game-wrapper { flex-direction: column; }
-            .board-col { width: 100%; aspect-ratio: 1/1; }
-            .controls-col { width: 100%; flex-direction: row; justify-content: space-between; }
-            .btn-nav { flex: 1; padding: 15px 0; }
-            .info-col { width: 100%; }
+            .game-wrapper { flex-direction: column; align-items: stretch; }
+            .board-col { width: 100%; aspect-ratio: 1/1; } /* 满宽正方形 */
+            .controls-col { 
+                width: 100%; flex: auto; flex-direction: row; justify-content: space-between; 
+                order: 2; /* 按钮在棋盘下 */
+            }
+            .btn-nav { flex: 1; padding: 12px 0; font-size: 1.2rem; } /* 按钮加大 */
+            .info-col { width: 100%; order: 3; max-width: none; }
         }
+
+        /* 电脑端 (大于 769px) */
         @media (min-width: 769px) {
-            .board-col { height: 85vh; width: 85vh; max-width: 650px; max-height: 650px; }
+            .board-col { 
+                /* 关键修改：减小高度，留出空间 */
+                height: 70vh; 
+                width: 70vh; 
+                max-width: 600px; 
+                max-height: 600px; 
+            }
         }
         
         /* 列表部分 */
@@ -59,19 +94,25 @@
 
 <div class="main-stage">
     <div class="game-wrapper">
+        
+        <!-- 1. 棋盘 -->
         <div class="board-col">
             <canvas id="game-canvas"></canvas>
             <div id="msg" class="overlay">Correct!</div>
         </div>
+
+        <!-- 2. 按钮 -->
         <div class="controls-col">
-            <button class="btn-nav" onclick="nav.first()">|‹</button>
-            <button class="btn-nav" onclick="nav.prev10()">‹‹</button>
-            <button class="btn-nav" onclick="nav.prev()">‹</button>
-            <button class="btn-nav" onclick="nav.next()">›</button>
-            <button class="btn-nav" onclick="nav.next10()">››</button>
-            <button class="btn-nav" onclick="nav.last()">›|</button>
+            <button class="btn-nav" onclick="nav.first()" title="第一手">|‹</button>
+            <button class="btn-nav" onclick="nav.prev10()" title="快退">‹‹</button>
+            <button class="btn-nav" onclick="nav.prev()" title="上一手">‹</button>
+            <button class="btn-nav" onclick="nav.next()" title="下一手">›</button>
+            <button class="btn-nav" onclick="nav.next10()" title="快进">››</button>
+            <button class="btn-nav" onclick="nav.last()" title="最新">›|</button>
             <label class="switch-label"><input type="checkbox" id="chk-num" onchange="toggleNumbers()"> 手数</label>
         </div>
+
+        <!-- 3. 信息 -->
         <div class="info-col">
             <div class="meta-card">
                 <div class="mode-tabs">
@@ -79,7 +120,9 @@
                     <div class="mode-btn" onclick="setMode('guess')" id="t-guess">猜局</div>
                     <div class="mode-btn" onclick="setMode('try')" id="t-try">试下</div>
                 </div>
-                <div style="font-weight:bold; font-size:1.1rem; margin-bottom:5px;"><span id="p-black">--</span> vs <span id="p-white">--</span></div>
+                <div style="font-weight:bold; font-size:1.1rem; margin-bottom:5px;">
+                    <span id="p-black">--</span> vs <span id="p-white">--</span>
+                </div>
                 <div style="color:#666; font-size:0.85rem;">
                     <span id="p-event">--</span> · <span id="p-result">--</span> · <span id="p-date"></span>
                 </div>
@@ -125,7 +168,7 @@
     const board = new GoBoard('game-canvas');
     const engine = new GoEngine();
     let moves=[], curStep=0, mode='view', tryHist=[], meta={}, sgfStr="";
-    let gameData = null; // 全局存储游戏数据
+    let gameData = null; 
     const sndMove = new Audio('../assets/sound/move.wav');
 
     window.onload = async () => {
@@ -136,7 +179,7 @@
         const { data } = await sbClient.from('games').select('*').eq('id', id).single();
         if(!data) { alert('读取失败'); return; }
 
-        gameData = data; // 保存供下载使用
+        gameData = data; 
         sgfStr = data.sgf_content;
         const res = parseSGF(sgfStr);
         moves = res.moves; meta = res.meta;
@@ -146,7 +189,7 @@
         document.getElementById('p-event').innerText = data.event_name;
         document.getElementById('p-result').innerText = data.result;
         document.getElementById('p-date').innerText = data.game_date;
-        document.title = `${data.black_player} vs ${data.white_player}`;
+        document.title = `${data.black_player} vs ${data.white_player} - ${data.result} - ${data.event_name}`;
 
         // 默认显示终局
         curStep = moves.length;
@@ -224,14 +267,13 @@
     function showMsg(t,s) { const e=document.getElementById('msg'); e.innerText=t; e.style.opacity=1; e.style.background=s?"#27ae60":"rgba(0,0,0,0.8)"; setTimeout(()=>e.style.opacity=0,1000); }
     function playSound() { sndMove.currentTime=0; sndMove.play().catch(()=>{}); }
     
-    // --- 3. 修改文件名: XXX vs XXX Date.sgf ---
+    // SGF 下载
     window.downloadSGF = function() {
         if(!gameData) return;
         const b = new Blob([sgfStr],{type:'application/x-go-sgf'});
         const u = URL.createObjectURL(b);
         const a = document.createElement('a');
         a.href = u;
-        // 格式：柯洁 vs 申真谞 2025-12-05.sgf
         a.download = `${gameData.black_player} vs ${gameData.white_player} ${gameData.game_date}.sgf`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
@@ -243,32 +285,17 @@
         l.innerHTML = data.map(g => `<div class="game-item" onclick="window.location.hash='${g.id}';window.location.reload()"><div style="font-weight:bold">${g.black_player} vs ${g.white_player}</div><div>${g.result}</div></div>`).join('');
     }
 
-    // --- 收藏相关逻辑 ---
+    // 收藏相关
     async function openFavModal() {
         const { data: { user } } = await sbClient.auth.getUser();
         if (!user) {
             alert("请先登录");
             return location.href = "../login.html";
         }
-
-        // 只查询根目录下的文件夹 (parent_id is null)
-        const { data: folders } = await sbClient
-            .from('favorites')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('is_folder', true)
-            .is('parent_id', null) 
-            .order('created_at');
-
+        const { data: folders } = await sbClient.from('favorites').select('*').eq('user_id', user.id).eq('is_folder', true).is('parent_id', null).order('created_at');
         const select = document.getElementById('fav-folder-select');
         select.innerHTML = '<option value="">根目录 (Root)</option>';
-        
-        if (folders) {
-            folders.forEach(f => {
-                select.add(new Option(`📁 ${f.title}`, f.id));
-            });
-        }
-
+        if (folders) folders.forEach(f => select.add(new Option(`📁 ${f.title}`, f.id)));
         document.getElementById('fav-title').value = `${gameData.black_player} vs ${gameData.white_player} ${gameData.game_date}`;
         document.getElementById('fav-modal').style.display = 'flex';
     }
@@ -278,20 +305,11 @@
         const folderId = document.getElementById('fav-folder-select').value || null;
         const title = document.getElementById('fav-title').value;
         const id = window.location.hash.substring(1); 
-
         const { error } = await sbClient.from('favorites').insert({
-            user_id: user.id,
-            game_id: id,
-            parent_id: folderId, // 只能是一级目录
-            title: title,
-            is_folder: false
+            user_id: user.id, game_id: id, parent_id: folderId, title: title, is_folder: false
         });
-
         if (error) alert("收藏失败: " + error.message);
-        else {
-            alert("收藏成功！");
-            document.getElementById('fav-modal').style.display = 'none';
-        }
+        else { alert("收藏成功！"); document.getElementById('fav-modal').style.display = 'none'; }
     }
 </script>
 </body>
