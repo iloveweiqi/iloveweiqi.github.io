@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>加载中... - 爱围棋 | iWeiQi - 围棋棋谱库</title>
+    <title>加载中... - 爱围棋</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -15,8 +15,8 @@
         header { background: #fff; height: 50px; display: flex; align-items: center; padding: 0 15px; border-bottom:1px solid #eee; position:sticky; top:0; z-index:99; }
         .back { text-decoration: none; color: #555; font-size: 0.9rem; }
         
-        /* === 布局容器 === */
-        .main-stage, .bottom-section { 
+        /* 布局容器 */
+        .main-stage, .bottom-section, .comment-area { 
             width: 100%; 
             max-width: 1200px; 
             margin: 0 auto; 
@@ -24,43 +24,25 @@
         }
 
         .game-wrapper {
-            display: flex;
-            gap: 15px;
-            flex-direction: row; 
-            align-items: flex-start;
-            justify-content: flex-start; 
+            display: flex; gap: 15px; flex-direction: row; align-items: flex-start; justify-content: flex-start; 
         }
 
-        /* 1. 棋盘盒子 */
+        /* 棋盘盒子 */
         .board-col {
-            flex: 0 0 auto; 
-            position: relative;
-            background: var(--wood);
-            border-radius: 4px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            aspect-ratio: 1 / 1; 
+            flex: 0 0 auto; position: relative; background: var(--wood); border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); aspect-ratio: 1 / 1; 
         }
         canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
 
-        /* 2. 控制按钮区 */
-        .controls-col {
-            flex: 0 0 50px;
-            display: flex; flex-direction: column; gap: 8px;
-        }
-        .btn-nav {
-            width: 100%; padding: 10px 0; background: #fff; border: 1px solid #ccc; border-radius: 6px;
-            font-size: 1.1rem; cursor: pointer; text-align: center; color:#333;
-            display: flex; align-items: center; justify-content: center;
-        }
+        /* 控制按钮区 */
+        .controls-col { flex: 0 0 50px; display: flex; flex-direction: column; gap: 8px; }
+        .btn-nav { width: 100%; padding: 10px 0; background: #fff; border: 1px solid #ccc; border-radius: 6px; font-size: 1.1rem; cursor: pointer; text-align: center; color:#333; display: flex; align-items: center; justify-content: center; }
         .btn-nav:hover { background: #eee; }
         .btn-nav:active { background: #ddd; transform: scale(0.95); }
 
-        /* 3. 信息与解说 */
-        .info-col {
-            flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; max-width: 400px;
-        }
+        /* 信息与解说 */
+        .info-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; max-width: 400px; }
         .meta-card { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #eee; }
-        .comment-box { 
+        .sgf-comment-box { 
             background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 15px; 
             height: 300px; overflow-y: auto; font-size: 0.95rem; line-height: 1.6; color: #2c3e50; 
         }
@@ -73,64 +55,58 @@
         .overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.7); color: #fff; padding: 10px 20px; border-radius: 20px; opacity: 0; pointer-events: none; transition: 0.3s; font-weight: bold; white-space: nowrap; z-index: 10; }
         .switch-label { display: flex; align-items: center; justify-content: center; font-size: 0.75rem; cursor: pointer; color: #555; margin-top:5px; white-space: nowrap; }
 
+        /* === 评论区样式 (新增) === */
+        .comment-area { margin-top: 20px; }
+        .comment-card { background: #fff; border-radius: 8px; border: 1px solid #eee; padding: 20px; }
+        .comm-header { font-weight: bold; font-size: 1.1rem; margin-bottom: 15px; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        
+        .comm-input-box textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; resize: vertical; min-height: 80px; margin-bottom: 10px; }
+        .comm-btn { background: var(--accent); color: #fff; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        
+        .comm-list { margin-top: 20px; }
+        .comm-item { padding: 15px 0; border-bottom: 1px solid #f0f0f0; }
+        .comm-item:last-child { border-bottom: none; }
+        .comm-user { font-weight: bold; color: #2c3e50; font-size: 0.9rem; margin-bottom: 4px; }
+        .comm-time { font-size: 0.75rem; color: #999; margin-left: 10px; font-weight: normal; }
+        .comm-content { font-size: 0.95rem; line-height: 1.5; color: #333; white-space: pre-wrap; }
+        .comm-del { color: #e74c3c; cursor: pointer; font-size: 0.8rem; margin-left: 10px; text-decoration: underline; }
+
         /* === 响应式适配 === */
         @media (min-width: 769px) {
             .board-col { height: 80vh; max-height: 650px; width: auto; }
             .bottom-section { margin-top: 20px; }
         }
-
         @media (max-width: 768px) {
-            .main-stage { padding: 0; }
+            .main-stage, .comment-area { padding: 0; }
             .game-wrapper { flex-direction: column; gap: 0; }
             .board-col { width: 100%; height: auto; border-radius: 0; }
-            .controls-col {
-                flex-direction: row; width: 100%; flex: 0 0 auto; padding: 10px;
-                background: #fff; border-bottom: 1px solid #eee; justify-content: space-between;
-            }
+            .controls-col { flexDirection: row; width: 100%; flex: 0 0 auto; padding: 10px; background: #fff; border-bottom: 1px solid #eee; justify-content: space-between; flex-direction: row; }
             .btn-nav { flex: 1; margin: 0 2px; padding: 12px 0; font-size: 1.2rem; }
             .switch-label { margin-top: 0; margin-left: 5px; flex-direction: column; font-size: 0.7rem;}
             .info-col { width: 100%; max-width: none; padding: 10px; }
-            .comment-box { height: 200px; }
+            .sgf-comment-box { height: 200px; }
+            .comment-card { border-radius: 0; border-left: none; border-right: none; }
         }
 
-        /* 列表部分样式优化 */
-        .list-box { background: #fff; border-radius: 8px; border:1px solid #eee; overflow: hidden; }
-        
-        .list-header { 
-            padding: 15px; background: #f9f9f9; border-bottom: 1px solid #eee; 
-            display: flex; justify-content: space-between; align-items: center; 
-        }
+        /* 列表部分 */
+        .list-box { background: #fff; border-radius: 8px; border:1px solid #eee; }
+        .list-header { padding: 15px; background: #f9f9f9; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         .list-title { font-weight: bold; color: #333; }
         .list-link { font-size: 0.85rem; color: var(--primary); text-decoration: none; }
-        .list-link:hover { text-decoration: underline; }
-
-        .game-item { 
-            padding: 15px; border-bottom: 1px solid #eee; 
-            display: flex; justify-content: space-between; align-items: center; 
-            transition: background 0.1s;
-        }
-        .game-item:hover { background: #f0f7ff; }
-        
-        .item-main { flex: 1; }
+        .game-item { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
         .item-players { font-weight: bold; color: #333; font-size: 1rem; text-decoration: none; display: block; margin-bottom: 4px; }
         .item-meta { font-size: 0.85rem; color: #666; }
         .item-result { font-weight: bold; font-size: 0.9rem; margin-left: 10px; min-width: 60px; text-align: right; }
-        .win-b { color: #2c3e50; } /* 黑胜颜色 */
-        .win-w { color: #e74c3c; } /* 白胜颜色 */
-
+        .win-b { color: #2c3e50; } 
+        .win-w { color: #e74c3c; }
         .search-bar { display: flex; gap: 10px; margin-bottom: 15px; }
         .inp { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
         .btn-search { padding: 8px 15px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        
+        /* 页脚 */
+        footer { text-align: center; padding: 40px 20px; color: #999; font-size: 0.85rem; border-top: 1px solid #eee; margin-top: 40px; background: #fff; }
+        footer a { color: #666; text-decoration: none; margin: 0 5px; }
     </style>
-    <script>
-    var _hmt = _hmt || [];
-    (function() {
-      var hm = document.createElement("script");
-      hm.src = "https://hm.baidu.com/hm.js?d6ae297c0516ef1d9c8f76bf2abca886";
-      var s = document.getElementsByTagName("script")[0]; 
-      s.parentNode.insertBefore(hm, s);
-    })();
-    </script>
 </head>
 <body>
 <header>
@@ -140,13 +116,11 @@
 
 <div class="main-stage">
     <div class="game-wrapper">
-        
         <!-- 1. 棋盘 -->
         <div class="board-col" id="board-container">
             <canvas id="game-canvas"></canvas>
             <div id="msg" class="overlay">Correct!</div>
         </div>
-
         <!-- 2. 按钮 -->
         <div class="controls-col">
             <button class="btn-nav" onclick="nav.first()" title="第一手">|‹</button>
@@ -155,12 +129,8 @@
             <button class="btn-nav" onclick="nav.next()" title="下一手">›</button>
             <button class="btn-nav" onclick="nav.next10()" title="快进">››</button>
             <button class="btn-nav" onclick="nav.last()" title="最新">›|</button>
-            <label class="switch-label">
-                <input type="checkbox" id="chk-num" onchange="toggleNumbers()">
-                <span data-i18n="step_label">手数</span>
-            </label>
+            <label class="switch-label"><input type="checkbox" id="chk-num" onchange="toggleNumbers()"> 手数</label>
         </div>
-
         <!-- 3. 信息 -->
         <div class="info-col">
             <div class="meta-card">
@@ -180,29 +150,43 @@
                     <a href="javascript:void(0)" onclick="openFavModal()" style="color:var(--accent);text-decoration:none; font-weight:bold;" data-i18n="add_fav">⭐ 加入收藏</a>
                 </div>
             </div>
-            <div class="comment-box" id="comment-content"><span style="color:#999" data-i18n="comment_none">暂无解说...</span></div>
+            <!-- SGF 解说 -->
+            <div class="sgf-comment-box" id="comment-content"><span style="color:#999" data-i18n="comment_none">暂无解说...</span></div>
         </div>
     </div>
 </div>
 
+<!-- 4. 用户评论区 (新增) -->
+<div class="comment-area">
+    <div class="comment-card">
+        <div class="comm-header">💬 棋友留言</div>
+        
+        <!-- 输入框 (未登录时隐藏) -->
+        <div class="comm-input-box" id="comm-input-container">
+            <div style="color:#666; font-size:0.9rem; padding:10px 0;">请先 <a href="../login.html" style="color:var(--primary)">登录</a> 后发表评论</div>
+        </div>
+
+        <!-- 评论列表 -->
+        <div class="comm-list" id="comm-list">
+            <div style="text-align:center; color:#999; padding:20px;">加载评论中...</div>
+        </div>
+    </div>
+</div>
+
+<!-- 5. 更多棋谱 -->
 <div class="bottom-section">
-    <!-- 棋谱库导航栏 -->
     <div class="list-box">
         <div class="list-header">
             <span class="list-title" data-i18n="latest_title">📚 更多棋谱</span>
             <a href="../library.html" class="list-link" data-i18n="view_all">查看全部棋谱 &gt;</a>
         </div>
-        
         <div style="padding:15px;">
             <div class="search-bar" style="margin-bottom:0;">
                 <input type="text" class="inp" id="k-word" data-i18n="search_placeholder" placeholder="搜索: 柯洁, LG杯...">
                 <button class="btn-search" onclick="doSearch()" data-i18n="search_btn">搜索</button>
             </div>
         </div>
-
-        <div id="game-list">
-            <div style="padding:20px;text-align:center">Loading...</div>
-        </div>
+        <div id="game-list"><div style="padding:20px;text-align:center">Loading...</div></div>
     </div>
 </div>
 
@@ -227,6 +211,11 @@
     </div>
 </div>
 
+<footer>
+    <div class="copyright">&copy; 2025 <span style="font-weight:bold;">爱围棋 (iWeiQi)</span> | iloveweiqi.com</div>
+    <div><a href="javascript:void(0)">关于我们</a> | <a href="javascript:void(0)">免责声明</a> | <a href="mailto:admin@iloveweiqi.com">联系管理员</a></div>
+</footer>
+
 <script src="../assets/js/config.js"></script>
 <script src="../assets/js/core.js"></script>
 <script>
@@ -234,10 +223,17 @@
     const engine = new GoEngine();
     let moves=[], curStep=0, mode='view', tryHist=[], meta={}, sgfStr="";
     let gameData = null; 
+    let currentUser = null; // 当前用户
     const sndMove = new Audio('../assets/sound/move.wav');
 
     window.onload = async () => {
         renderHeaderAuth('auth-box', '../');
+        
+        // 获取当前用户
+        const { data: { user } } = await sbClient.auth.getUser();
+        currentUser = user;
+        renderCommentInput(); // 根据登录状态渲染输入框
+
         let id = window.location.hash ? window.location.hash.substring(1) : new URLSearchParams(window.location.search).get('id');
         if(!id) return location.href="../index.html";
         
@@ -261,9 +257,91 @@
         updateUI();
         
         board.clickHandler = (x, y) => handleClick(x, y);
+        
+        // 加载留言和底部列表
+        loadComments(id);
         loadList();
     };
 
+    // --- 评论功能 (新增) ---
+    function renderCommentInput() {
+        const box = document.getElementById('comm-input-container');
+        if (currentUser) {
+            box.innerHTML = `
+                <textarea id="comm-text" placeholder="写下你的看法..."></textarea>
+                <div style="text-align:right"><button class="comm-btn" onclick="submitComment()">发表评论</button></div>
+            `;
+        }
+    }
+
+    async function loadComments(gameId) {
+        const list = document.getElementById('comm-list');
+        // 联合查询: comments inner join profiles
+        const { data, error } = await sbClient
+            .from('comments')
+            .select('id, content, created_at, user_id, profiles(username)')
+            .eq('game_id', gameId)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            list.innerHTML = `<div style="color:red;text-align:center">评论加载失败</div>`;
+            return;
+        }
+
+        if (data.length === 0) {
+            list.innerHTML = `<div style="color:#999;text-align:center;padding:20px;">还没有评论，快来抢沙发！</div>`;
+            return;
+        }
+
+        list.innerHTML = data.map(c => {
+            const date = new Date(c.created_at).toLocaleString();
+            const username = c.profiles ? c.profiles.username : 'Unknown';
+            const isMine = currentUser && currentUser.id === c.user_id;
+            
+            return `
+                <div class="comm-item">
+                    <div class="comm-user">
+                        ${username} 
+                        <span class="comm-time">${date}</span>
+                        ${isMine ? `<span class="comm-del" onclick="delComment('${c.id}')">删除</span>` : ''}
+                    </div>
+                    <div class="comm-content">${escapeHtml(c.content)}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function submitComment() {
+        if (!currentUser) return alert("请先登录");
+        const text = document.getElementById('comm-text').value.trim();
+        if (!text) return alert("请输入内容");
+
+        const gameId = window.location.hash.substring(1);
+        const { error } = await sbClient.from('comments').insert({
+            game_id: gameId,
+            user_id: currentUser.id,
+            content: text
+        });
+
+        if (error) alert("发送失败: " + error.message);
+        else {
+            document.getElementById('comm-text').value = ''; // 清空
+            loadComments(gameId); // 刷新
+        }
+    }
+
+    async function delComment(id) {
+        if (!confirm("确定删除这条评论吗？")) return;
+        const { error } = await sbClient.from('comments').delete().eq('id', id);
+        if (error) alert("删除失败");
+        else loadComments(window.location.hash.substring(1));
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // --- 棋盘交互逻辑 (保持不变) ---
     const nav = {
         next: () => { if(curStep < moves.length) { const m = moves[curStep]; engine.play(m.x, m.y, m.c); curStep++; playSound(); updateUI(); } },
         prev: () => { if(curStep > 0) { curStep--; syncEngine(); updateUI(); } },
@@ -342,7 +420,7 @@
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
     
-    // 加载列表 (优化显示)
+    // 加载底部列表
     async function loadList(keyword = '') {
         const list = document.getElementById('game-list');
         list.innerHTML = `<div style="padding:20px;text-align:center">${t('loading')||'Loading...'}</div>`;
@@ -361,7 +439,6 @@
         }
 
         list.innerHTML = data.map(g => {
-            // 处理结果显示：黑胜/白胜
             let resText = g.result || '-';
             let resClass = '';
             if (resText.startsWith('B')) { resText = '黑胜 (' + resText + ')'; resClass = 'win-b'; }
