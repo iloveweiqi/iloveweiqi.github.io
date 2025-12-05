@@ -6,60 +6,55 @@
     <title>加载中... - 爱围棋</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --primary: #2c3e50; --accent: #d4a017; --bg: #f4f6f8; --wood: #eebb76; }
+        :root { --primary: #2c3e50; --accent: #d4a017; --wood: #eebb76; --bg: #f4f6f8; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: #333; }
-        
-        /* 顶部 Header */
         header { background: #fff; height: 50px; display: flex; align-items: center; padding: 0 15px; border-bottom:1px solid #eee; position:sticky; top:0; z-index:99; }
         .back { text-decoration: none; color: #555; font-size: 0.9rem; }
         
-        /* 布局 */
         .main-stage { max-width: 1200px; margin: 0 auto; padding: 10px; display: flex; flex-direction: column; gap: 15px; }
         .game-wrapper { display: flex; gap: 15px; flex-direction: row; align-items: flex-start; }
         
+        /* 1. 棋盘盒子 */
         .board-col { flex: 0 0 auto; position: relative; background: var(--wood); border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         canvas { display: block; cursor: pointer; }
-        .controls-col { flex: 0 0 60px; display: flex; flex-direction: column; gap: 8px; }
-        .info-col { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 200px; }
 
-        .btn-nav { padding: 12px 0; background: #fff; border: 1px solid #ccc; border-radius: 6px; font-size: 1.2rem; cursor: pointer; text-align: center; color: #333; }
+        /* 2. 控制按钮区 */
+        .controls-col { flex: 0 0 60px; display: flex; flex-direction: column; gap: 8px; }
+        .btn-nav { padding: 12px 0; background: #fff; border: 1px solid #ccc; border-radius: 6px; font-size: 1.2rem; cursor: pointer; text-align: center; }
         .btn-nav:hover { background: #eee; }
         .btn-nav:active { background: #ddd; transform: scale(0.98); }
 
+        /* 3. 信息区 */
+        .info-col { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 200px; }
         .comment-box { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 15px; min-height: 150px; max-height: 400px; overflow-y: auto; font-size: 0.95rem; line-height: 1.6; color: #2c3e50; }
         .meta-card { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #eee; }
-        .meta-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; }
-        .meta-sub { color: #666; font-size: 0.9rem; }
+        
+        /* Tab 切换 */
+        .mode-tabs { display: flex; gap: 5px; margin-bottom: 10px; }
+        .mode-btn { flex: 1; padding: 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; text-align: center; border-radius: 4px; font-size: 0.9rem;}
+        .mode-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-        /* 开关样式 */
-        .switch-label { display: flex; align-items: center; font-size: 0.85rem; cursor: pointer; user-select: none; color: #555; margin-top: 5px; justify-content: center;}
-        .switch-label input { margin-right: 5px; }
+        .overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.7); color: #fff; padding: 10px 20px; border-radius: 20px; opacity: 0; pointer-events: none; transition: 0.3s; font-weight: bold; }
+        .switch-label { display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; color: #555; }
 
         @media (max-width: 768px) {
             .game-wrapper { flex-direction: column; }
             .board-col { width: 100%; aspect-ratio: 1/1; }
-            .controls-col { width: 100%; flex: auto; flex-direction: row; justify-content: space-between; }
+            .controls-col { width: 100%; flex-direction: row; justify-content: space-between; }
             .btn-nav { flex: 1; padding: 15px 0; }
             .info-col { width: 100%; }
         }
         @media (min-width: 769px) {
             .board-col { height: 85vh; width: 85vh; max-width: 650px; max-height: 650px; }
         }
-
-        .overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.7); color: #fff; padding: 10px 20px; border-radius: 20px; opacity: 0; pointer-events: none; transition: 0.3s; font-weight: bold; }
         
-        .bottom-section { max-width: 800px; margin: 40px auto 20px; padding: 10px; }
-        .search-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; border:1px solid #eee; }
-        .inp { padding: 8px; border: 1px solid #ddd; border-radius: 4px; flex: 1; }
-        .btn-search { background: var(--accent); color: #fff; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; }
-        .list-box { background: #fff; border-radius: 8px; border:1px solid #eee; overflow: hidden; }
-        .game-item { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .game-item:hover { background: #f0f7ff; }
-        .win { color: #e74c3c; font-weight: bold; }
+        /* 列表部分 */
+        .bottom-section { max-width: 800px; margin: 40px auto; padding: 10px; }
+        .list-box { background: #fff; border-radius: 8px; border:1px solid #eee; }
+        .game-item { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
-
 <header>
     <a href="../index.html" class="back">‹ 返回首页</a>
     <div style="margin-left:auto;" id="auth-box"></div>
@@ -71,46 +66,36 @@
             <canvas id="game-canvas"></canvas>
             <div id="msg" class="overlay">Correct!</div>
         </div>
-
         <div class="controls-col">
-            <button class="btn-nav" onclick="nav.first()" title="第一手">|‹</button>
-            <button class="btn-nav" onclick="nav.prev10()" title="快退">‹‹</button>
-            <button class="btn-nav" onclick="nav.prev()" title="上一手">‹</button>
-            <button class="btn-nav" onclick="nav.next()" title="下一手">›</button>
-            <button class="btn-nav" onclick="nav.next10()" title="快进">››</button>
-            <button class="btn-nav" onclick="nav.last()" title="最新">›|</button>
-            <button class="btn-nav" onclick="setMode('guess')" style="font-size:0.9rem; font-weight:bold; color:var(--primary)">猜局</button>
-            
-            <!-- 显示手数开关 -->
-            <label class="switch-label">
-                <input type="checkbox" id="chk-num" onchange="toggleNumbers()"> 手数
-            </label>
+            <button class="btn-nav" onclick="nav.first()">|‹</button>
+            <button class="btn-nav" onclick="nav.prev10()">‹‹</button>
+            <button class="btn-nav" onclick="nav.prev()">‹</button>
+            <button class="btn-nav" onclick="nav.next()">›</button>
+            <button class="btn-nav" onclick="nav.next10()">››</button>
+            <button class="btn-nav" onclick="nav.last()">›|</button>
+            <label class="switch-label"><input type="checkbox" id="chk-num" onchange="toggleNumbers()"> 手数</label>
         </div>
-
         <div class="info-col">
             <div class="meta-card">
-                <div class="meta-title"><span id="p-black">--</span> vs <span id="p-white">--</span></div>
-                <div class="meta-sub">
-                    <span id="p-event">--</span> · <span id="p-result">--</span> · 手数: <span id="step-num" style="font-weight:bold; color:#d4a017">0</span>
+                <!-- 修复点 2: 显眼的 Tab 切换 -->
+                <div class="mode-tabs">
+                    <div class="mode-btn active" onclick="setMode('view')" id="t-view">浏览</div>
+                    <div class="mode-btn" onclick="setMode('guess')" id="t-guess">猜局</div>
+                    <div class="mode-btn" onclick="setMode('try')" id="t-try">试下</div>
                 </div>
-                <div style="margin-top:10px; font-size:0.85rem;">
-                    <a href="#" onclick="downloadSGF()" style="color:#666; text-decoration:underline;">📥 下载 SGF</a>
-                </div>
+                <div style="font-weight:bold; font-size:1.1rem; margin-bottom:5px;"><span id="p-black">--</span> vs <span id="p-white">--</span></div>
+                <div style="color:#666; font-size:0.85rem;"><span id="p-event">--</span> · <span id="p-result">--</span></div>
+                <div style="margin-top:10px;"><a href="#" onclick="downloadSGF()" style="color:#666;text-decoration:underline;font-size:0.85rem">📥 下载 SGF</a></div>
             </div>
-            <div class="comment-box" id="comment-content">
-                <span style="color:#999">暂无解说...</span>
-            </div>
+            <!-- 修复点 3: 解说框 -->
+            <div class="comment-box" id="comment-content"><span style="color:#999">暂无解说...</span></div>
         </div>
     </div>
 </div>
 
 <div class="bottom-section">
-    <h3 style="border-bottom:2px solid var(--primary); padding-bottom:10px; margin-bottom:15px; color:#333;">📚 更多棋谱</h3>
-    <div class="search-bar">
-        <input type="text" class="inp" id="k-word" placeholder="搜索: 柯洁, LG杯...">
-        <button class="btn-search" onclick="doSearch()">搜索</button>
-    </div>
-    <div class="list-box" id="game-list"><div style="padding:20px; text-align:center; color:#999;">Loading...</div></div>
+    <h3 style="border-bottom:2px solid var(--primary); padding-bottom:10px; color:#333;">📚 更多棋谱</h3>
+    <div class="list-box" id="game-list">Loading...</div>
 </div>
 
 <script src="../assets/js/config.js"></script>
@@ -118,10 +103,7 @@
 <script>
     const board = new GoBoard('game-canvas');
     const engine = new GoEngine();
-    
-    let moves = [], curStep = 0, mode = 'view', meta = {}, sgfStr = "";
-    // 试下历史：[{x, y, c}, ...]
-    let tryHist = []; 
+    let moves=[], curStep=0, mode='view', tryHist=[], meta={}, sgfStr="";
     const sndMove = new Audio('../assets/sound/move.wav');
 
     window.onload = async () => {
@@ -129,22 +111,22 @@
         let id = window.location.hash ? window.location.hash.substring(1) : new URLSearchParams(window.location.search).get('id');
         if(!id) return location.href="../index.html";
         
-        const { data, error } = await sbClient.from('games').select('*').eq('id', id).single();
-        if(error || !data) { alert('读取失败'); return; }
+        const { data } = await sbClient.from('games').select('*').eq('id', id).single();
+        if(!data) { alert('Err'); return; }
 
         sgfStr = data.sgf_content;
+        // 使用更新后的 core.js 解析器
         const res = parseSGF(sgfStr);
         moves = res.moves; meta = res.meta;
         
         document.getElementById('p-black').innerText = data.black_player;
         document.getElementById('p-white').innerText = data.white_player;
-        document.getElementById('p-event').innerText = data.event_name || '-';
-        document.getElementById('p-result').innerText = data.result || '-';
+        document.getElementById('p-event').innerText = data.event_name;
+        document.getElementById('p-result').innerText = data.result;
         document.title = `${data.black_player} vs ${data.white_player}`;
 
         updateUI();
         board.clickHandler = (x, y) => handleClick(x, y);
-
         loadList();
     };
 
@@ -158,156 +140,72 @@
     };
 
     function handleClick(x, y) {
-        if(mode === 'view') return;
-        if(mode === 'guess') {
-            if(curStep >= moves.length) return showMsg("结束");
-            const next = moves[curStep];
-            if(next.x === x && next.y === y) { showMsg("Correct!", true); nav.next(); } 
-            else showMsg("Wrong!");
-        } else if (mode === 'try') {
-            // 试下模式
-            let color = getNextColor();
-            
+        if(mode==='view') return;
+        if(mode==='guess') {
+            if(curStep>=moves.length) return showMsg("结束");
+            const n = moves[curStep];
+            if(n.x===x && n.y===y) { showMsg("Correct!",1); nav.next(); } else showMsg("Wrong!");
+        } else if(mode==='try') {
+            let color = (tryHist.length>0 ? tryHist[tryHist.length-1].c : (curStep>0?moves[curStep-1].c:2)) === 1 ? 2 : 1;
             const res = engine.play(x, y, color);
-            if(res.success) {
-                tryHist.push({x, y, c: color});
-                playSound();
-                // 局部更新：只画这个子，提升性能，但为了逻辑统一，这里调用重绘
-                updateBoard(); 
-            } else if (res.error === 'ko') {
-                showMsg("打劫 (Ko)", false);
-            }
+            if(res.success) { tryHist.push({x,y,c:color}); playSound(); updateBoard(); }
+            else if(res.error==='ko') showMsg("打劫");
         }
-    }
-
-    function getNextColor() {
-        // 判断下一手颜色
-        if(mode === 'try' && tryHist.length > 0) {
-            return tryHist[tryHist.length-1].c === 1 ? 2 : 1;
-        }
-        if (moves.length > curStep) return moves[curStep].c; // 依据棋谱下一手
-        if (curStep > 0) return moves[curStep-1].c === 1 ? 2 : 1; // 依据棋谱上一手反推
-        return 1; // 默认黑先
     }
 
     function syncEngine() { engine.reset(); for(let i=0; i<curStep; i++) engine.play(moves[i].x, moves[i].y, moves[i].c); }
     
     function updateBoard() {
         let last = curStep > 0 ? moves[curStep-1] : null;
-        
-        // 如果是试下模式，覆盖last
         if(mode === 'try' && tryHist.length > 0) last = tryHist[tryHist.length-1];
-
-        // 告知 Board 下一手颜色以显示幽灵子
-        board.nextColor = getNextColor();
-
-        // 1. 生成手数Map (仅在显示手数开启时)
+        board.nextColor = (mode==='try' && tryHist.length>0 ? tryHist[tryHist.length-1].c : (curStep>0?moves[curStep-1].c:2))===1?2:1;
+        
         let moveMap = null;
         if(board.config.showNumbers) {
             moveMap = {};
-            // 遍历当前步数，记录每颗子最后出现的手数
-            // 注意：被提掉的子不需要显示数字，所以我们得模拟一遍或者简化逻辑
-            // 简化逻辑：直接显示当前棋盘上这颗子对应在moves里的最后索引+1
-            // 更好的逻辑：为了准确，我们需要直到当前棋盘上的子是第几手下的。
-            // 这里利用一个简化的方式：每次落子时记录该位置的手数
-            // 由于 core.js 是纯数组，我们重新映射一下：
-            // 我们重跑一遍逻辑来生成 map (为了准确显示被提子后新下的子)
-            let tempEngine = new GoEngine();
-            let tempMap = {};
-            
-            // 基础步数
+            let tmpE = new GoEngine();
             for(let i=0; i<curStep; i++) {
-                let m = moves[i];
-                let res = tempEngine.play(m.x, m.y, m.c);
-                if(res.success) tempMap[`${m.x},${m.y}`] = i + 1;
-                // 如果有提子，被提的地方数字消失
-                // 这个逻辑在 core.play 里内部处理了 board[y][x]=0，但没处理 map
-                // 暂时不处理复杂的“被提子后又下子”的数字更新，
-                // 简单方案：只标记 moves[i]，不处理提子消除数字（因为是覆盖）
+                if(tmpE.play(moves[i].x, moves[i].y, moves[i].c).success) moveMap[`${moves[i].x},${moves[i].y}`]=i+1;
             }
-            // 试下步数
-            if (mode === 'try') {
-                tryHist.forEach((m, idx) => {
-                    tempEngine.play(m.x, m.y, m.c);
-                    // 试下手数如果不希望显示数字，可以注释掉下面这行
-                    // tempMap[`${m.x},${m.y}`] = curStep + idx + 1; 
-                });
-            }
-            
-            // 过滤掉那些已经在棋盘上消失了的点 (core.js draw 时会判断 board[y][x] 是否有子)
-            moveMap = tempMap;
+            if(mode==='try') tryHist.forEach((m,i)=>{ if(tmpE.play(m.x,m.y,m.c).success) moveMap[`${m.x},${m.y}`]=curStep+i+1; });
         }
-
         board.draw(engine.board, last, moveMap);
     }
 
+    // 渲染解说
     function renderComment() {
         const box = document.getElementById('comment-content');
         let txt = "";
-        if (mode === 'try') {
-            txt = `【试下模式】\n当前变化图手数: ${tryHist.length}`;
-        } else if (curStep > 0) {
-            txt = moves[curStep - 1].comment || `<span style="color:#ccc">第 ${curStep} 手</span>`;
+        if (mode === 'try') txt = `【试下模式】\n变化手数: ${tryHist.length}`;
+        else if (curStep > 0) {
+            // 获取当前步的 comment
+            const m = moves[curStep-1];
+            txt = m.comment || ""; 
+            if(!txt) txt = `<span style="color:#ccc">第 ${curStep} 手 (无解说)</span>`;
         } else {
             txt = meta.GC || meta.C || "【开局】";
         }
         box.innerHTML = txt.replace(/\n/g, "<br>");
-        box.scrollTop = 0;
     }
 
-    function updateUI() {
-        document.getElementById('step-num').innerText = curStep;
-        updateBoard();
+    function updateUI() { updateBoard(); renderComment(); }
+    function toggleNumbers() { board.config.showNumbers = document.getElementById('chk-num').checked; updateBoard(); }
+    function setMode(m) {
+        mode = m; document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active')); document.getElementById('t-'+m).classList.add('active');
+        if(m==='view' && tryHist.length) { tryHist=[]; syncEngine(); updateBoard(); }
+        showMsg(m==='guess'?"猜局模式":(m==='try'?"试下模式":"浏览模式"));
         renderComment();
     }
-
-    function toggleNumbers() {
-        board.config.showNumbers = document.getElementById('chk-num').checked;
-        updateBoard(); // 重绘
-    }
-
-    function setMode(m) {
-        mode = m;
-        // 重置试下状态
-        if(m === 'view') {
-            if(tryHist.length) { tryHist=[]; syncEngine(); updateBoard(); }
-        } else if (m === 'try') {
-            // 进入试下，不清空，接着当前盘面下
-        }
-        showMsg(m==='guess'?"猜局模式":(m==='try'?"试下模式":"浏览模式"));
-    }
-
-    function showMsg(txt, s) { 
-        const el = document.getElementById('msg'); el.innerText=txt; el.style.opacity=1; 
-        el.style.background=s?"#27ae60":"rgba(0,0,0,0.8)"; setTimeout(()=>el.style.opacity=0, 1000); 
-    }
-    
+    function showMsg(t,s) { const e=document.getElementById('msg'); e.innerText=t; e.style.opacity=1; e.style.background=s?"#27ae60":"rgba(0,0,0,0.8)"; setTimeout(()=>e.style.opacity=0,1000); }
     function playSound() { sndMove.currentTime=0; sndMove.play().catch(()=>{}); }
+    window.downloadSGF = function() { const b=new Blob([sgfStr],{type:'application/x-go-sgf'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download="game.sgf"; a.click(); }
     
-    window.downloadSGF = function() {
-        const b = new Blob([sgfStr],{type:'application/x-go-sgf'});
-        const u = URL.createObjectURL(b);
-        const a = document.createElement('a'); a.href=u; a.download=`${meta.PB}_vs_${meta.PW}.sgf`;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    async function loadList() {
+        const l = document.getElementById('game-list');
+        const { data } = await sbClient.from('games').select('id,black_player,white_player,result,game_date,event_name').order('game_date',{ascending:false}).limit(10);
+        if(!data) return;
+        l.innerHTML = data.map(g => `<div class="game-item" onclick="window.location.hash='${g.id}';window.location.reload()"><div style="font-weight:bold">${g.black_player} vs ${g.white_player}</div><div>${g.result}</div></div>`).join('');
     }
-
-    // 复用列表
-    async function loadList(keyword = '') {
-        const list = document.getElementById('game-list');
-        list.innerHTML = '<div style="padding:20px;text-align:center">Loading...</div>';
-        let q = sbClient.from('games').select('id, black_player, white_player, event_name, game_date, result').order('game_date', {ascending: false}).limit(10);
-        if (keyword) q = q.or(`black_player.ilike.%${keyword}%,white_player.ilike.%${keyword}%,event_name.ilike.%${keyword}%`);
-        const { data, error } = await q;
-        if (error || !data || data.length === 0) { list.innerHTML = '<div style="padding:20px;text-align:center">暂无相关棋谱</div>'; return; }
-        list.innerHTML = data.map(g => `
-            <div class="game-item">
-                <div><a href="javascript:switchGame('${g.id}')" style="font-weight:bold; color:#333; text-decoration:none">${g.black_player} vs ${g.white_player}</a><div style="font-size:0.85rem; color:#888">📅 ${g.game_date} · ${g.event_name}</div></div>
-                <div class="${g.result && g.result.includes('+') ? 'win' : ''}">${g.result}</div>
-            </div>
-        `).join('');
-    }
-    function doSearch() { loadList(document.getElementById('k-word').value); }
-    window.switchGame = function(id) { window.location.hash = id; window.location.reload(); }
 </script>
 </body>
 </html>
