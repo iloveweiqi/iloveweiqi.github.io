@@ -1,6 +1,6 @@
 // assets/js/config.js
 
-const SUPABASE_URL = 'https://supabase-sgf.iloveweiqi.workers.dev';
+const SUPABASE_URL = 'https://supabase-sgf.iloveweiqi.com';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjam9kcWtwd2VpamJrcm9manVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4ODgyNjYsImV4cCI6MjA4MDQ2NDI2Nn0.GCodvYBkBEoWXw1CDfAnGSkuSxadYTKPijDRZdAVe5g';
 
 if (window.supabase) {
