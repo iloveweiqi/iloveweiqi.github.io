@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>爱围棋 | iWeiQi - 围棋棋谱库</title>
-    <link rel="stylesheet" href="./assets/css/style.css">
-    <!-- 引入 Supabase -->
+    <title>爱围棋 | iWeiQi</title>
+    <!-- 引入 Supabase (本地) -->
     <script src="assets/js/supabase.min.js"></script>
     <style>
         :root {
@@ -37,7 +36,7 @@
             top: 0;
             z-index: 99;
         }
-        .logo-area { display: flex; align-items: center; gap: 15px; }
+        .logo-area { display: flex; align-items: center; gap: 5px; }
         .logo {
             font-size: 1.2rem;
             font-weight: bold;
@@ -46,8 +45,23 @@
             display: flex;
             align-items: center;
             gap: 5px;
+            margin-right: 10px;
+            white-space: nowrap;
         }
         
+        /* 新增链接样式 */
+        .nav-link {
+            text-decoration: none;
+            color: #666;
+            font-size: 0.9rem;
+            margin-left: 10px;
+            font-weight: 500;
+            transition: color 0.2s;
+            white-space: nowrap; /* 防止换行 */
+        }
+        .nav-link:hover { color: var(--accent); text-decoration: underline; }
+        .hot-link { color: #e74c3c; } /* 赚钱游戏标红 */
+
         .nav-btn {
             padding: 6px 12px;
             border: 1px solid #ddd;
@@ -56,8 +70,18 @@
             cursor: pointer;
             font-size: 0.9rem;
             margin-left: 5px;
+            white-space: nowrap;
         }
         .nav-btn:hover { background: #f9f9f9; }
+
+        /* 手机端头部适配 */
+        @media (max-width: 600px) {
+            header { padding: 0 10px; }
+            .logo span { display: none; } /* 手机上隐藏 Logo 图标省空间 */
+            .logo { font-size: 1rem; margin-right: 5px; }
+            .nav-link { font-size: 0.8rem; margin-left: 5px; }
+            .nav-btn { padding: 4px 8px; font-size: 0.8rem; }
+        }
 
         /* --- 主容器 --- */
         .container {
@@ -215,32 +239,20 @@
         .win { color: #e74c3c; }
 
     </style>
-    <script>
-    var _hmt = _hmt || [];
-    (function() {
-      var hm = document.createElement("script");
-      hm.src = "https://hm.baidu.com/hm.js?d6ae297c0516ef1d9c8f76bf2abca886";
-      var s = document.getElementsByTagName("script")[0]; 
-      s.parentNode.insertBefore(hm, s);
-    })();
-    </script>
 </head>
 <body>
 
 <!-- 头部 -->
 <header>
     <div class="logo-area">
-        <a href="index.html" class="logo">
-            <!-- 图标部分，保持不动 -->
-            <span style="margin-right:5px;">⚫⚪</span> 
-            
-            <!-- 翻译部分，只给文字加标签 -->
-            <span data-i18n="site_name">爱围棋</span>
+        <a href="index.html" class="logo" data-i18n="site_name">
+            <span>⚫⚪</span> 爱围棋
         </a>
         <!-- 新增链接 (在Logo右侧) -->
         <a href="http://abc.iloveweiqi.com" target="_blank" class="nav-link">5分钟围棋入门</a>
         <a href="http://money.iloveweiqi.com" target="_blank" class="nav-link hot-link">赚钱游戏</a>
     </div>
+    
     <!-- 动态显示：语言切换 + 登录/注册/用户名 -->
     <div id="auth-box" style="display:flex; align-items:center;"></div>
 </header>
@@ -309,8 +321,7 @@
     const engine = new GoEngine();
 
     window.onload = async () => {
-        // 1. 渲染头部登录状态 & 语言切换 (config.js 中的公共函数)
-        // 会自动调用 applyLanguage() 进行翻译
+        // 1. 渲染头部登录状态 & 语言切换
         renderHeaderAuth('auth-box');
 
         // 2. 加载数据
@@ -392,21 +403,5 @@
     }
 </script>
 
-<!-- 底部版权信息 -->
-<footer>
-    <div class="copyright">
-        &copy; 2025 <span style="font-weight:bold;">爱围棋 (iWeiQi)</span> | iloveweiqi.com
-    </div>
-    <div>
-        <a href="javascript:void(0)">关于我们</a> | 
-        <a href="javascript:void(0)">免责声明</a> | 
-        <a href="mailto:iloveweiqi@outlook.com">联系管理员</a>
-    </div>
-    <div>
-        <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=31010602004089" target="_blank" style="margin-right:30px;">
-            <img src="assets/img/beian.png" /><span>沪公网安备 31010602006089号</span>
-        </a>ICP经营许可证：<a href="http://beian.miit.gov.cn/" target="_blank">沪ICP备15029680号</a>
-    </div>
-</footer>
 </body>
 </html>
