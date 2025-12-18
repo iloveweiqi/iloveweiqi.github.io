@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./assets/css/style.css">
     <title>爱围棋 | iWeiQi</title>
     <!-- 引入 Supabase (本地) -->
     <script src="assets/js/supabase.min.js"></script>
@@ -237,7 +238,31 @@
         .item-meta { font-size: 0.85rem; color: #888; }
         .item-result { font-weight: bold; font-size: 0.9rem; }
         .win { color: #e74c3c; }
-
+        
+        /* 工具栏链接样式 */
+        .tool-row {
+            display: flex;
+            justify-content: flex-end; /* 右对齐 */
+            margin-bottom: 8px; /* 与搜索框的间距 */
+            padding: 0 2px;
+        }
+        .tool-link-long {
+            font-size: 0.9rem;
+            color: #666;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px; /* 图标和文字间距 */
+            transition: color 0.2s;
+            background: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* 轻微阴影，像个小按钮 */
+        }
+        .tool-link-long:hover {
+            color: var(--primary);
+            background: #f9f9f9;
+        }
     </style>
 </head>
 <body>
@@ -287,7 +312,14 @@
             </div>
         </div>
     </div>
-
+    
+    <!-- 新增：工具栏 (在搜索框上方) -->
+    <div class="tool-row">
+        <a href="clear-sgf.html" class="tool-link-long">
+            🧹 野狐sgf棋谱清理工具
+        </a>
+    </div>
+    
     <!-- 2. 搜索栏 -->
     <div class="search-bar">
         <input type="text" class="inp" id="k-word" data-i18n="search_placeholder" placeholder="搜索棋手、赛事...">
